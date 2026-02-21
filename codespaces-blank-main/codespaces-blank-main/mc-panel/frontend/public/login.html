@@ -148,6 +148,7 @@
       try {
         const response = await fetch('/login', {
           method: 'POST',
+          credentials: 'include',  // 🔑 IMPORTANT: Include cookies in request and response
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
           },
