@@ -3,71 +3,108 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>MC Panel — Console</title>
+  <title>Apex Panel — Console</title>
   <style>
-    :root{--bg:#0f172a;--accent:#10b981;--muted:rgba(255,255,255,0.35);--glass: rgba(15,23,42,0.55)}
+    :root{
+      --navy:#0d1117;
+      --navy-light:#161b22;
+      --emerald:#00e676;
+      --emerald-dark:#00c853;
+      --ruby:#ff4d4d;
+      --muted:#8b949e;
+      --text:#e6eef8;
+      --glass:rgba(13,17,23,0.5);
+    }
     *{box-sizing:border-box;margin:0;padding:0}
-    html,body{height:100%;font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial;color:#e6eef8;background:linear-gradient(180deg,var(--bg),#071029)}
-    .app{display:flex;min-height:100vh}
-    .sidebar{width:84px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.05));backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;padding:18px 8px}
-    .brand{font-weight:700;color:var(--accent);margin-bottom:8px}
-    .side-nav{display:flex;flex-direction:column;gap:10px;margin-top:18px;width:100%;align-items:center}
-    .nav-btn{width:56px;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;transition:all .18s}
-    .nav-btn:hover{transform:translateY(-4px);color:#fff;box-shadow:0 6px 30px rgba(16,185,129,0.12)}
-    .nav-btn.active{background:linear-gradient(180deg,rgba(16,185,129,0.12),rgba(16,185,129,0.06));color:var(--accent);box-shadow:0 8px 28px rgba(16,185,129,0.14)}
-    .footer-actions{margin-top:auto;display:flex;flex-direction:column;gap:8px}
-    .logout-small{font-size:12px;color:var(--muted);cursor:pointer}
-    .main{flex:1;padding:28px}
-    .card{background:var(--glass);backdrop-filter:blur(10px);border-radius:12px;padding:20px;border:1px solid rgba(255,255,255,0.04)}
-    .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
-    .terminal{background:linear-gradient(180deg,rgba(0,0,0,0.45),rgba(0,0,0,0.25));border-radius:10px;padding:12px;height:620px;overflow:auto;border:1px solid rgba(255,255,255,0.03);font-family:monospace;font-size:13px}
-    .log-line{padding:6px 8px;border-radius:6px;margin-bottom:6px;white-space:pre-wrap}
-    .log-install{color:#7dd3fc;background:rgba(125,211,252,0.03);border:1px solid rgba(125,211,252,0.04)}
-    .log-info{color:#34d399;background:rgba(52,211,153,0.03);border:1px solid rgba(52,211,153,0.04)}
-    .log-warn{color:#facc15;background:rgba(250,204,21,0.03);border:1px solid rgba(250,204,21,0.04)}
-    .log-error{color:#fb7185;background:rgba(251,113,133,0.03);border:1px solid rgba(251,113,133,0.04)}
-    .log-meta{color:#a8a8a8;background:rgba(168,168,168,0.03);border:1px solid rgba(168,168,168,0.04)}
+    html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:var(--text);background:var(--navy);display:flex}
+    
+    .sidebar{width:280px;background:linear-gradient(180deg,var(--navy),var(--navy-light));border-right:1px solid rgba(255,255,255,0.08);padding:20px;display:flex;flex-direction:column;min-height:100vh}
+    .sidebar-brand{font-weight:900;font-size:24px;color:var(--emerald);margin-bottom:30px;display:flex;align-items:center;gap:8px}
+    .sidebar-brand::before{content:'⚡';font-size:28px}
+    .sidebar-menu{flex:1;display:flex;flex-direction:column;gap:8px}
+    .sidebar-item{padding:12px 16px;border-radius:8px;cursor:pointer;transition:all .2s;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:12px}
+    .sidebar-item:hover{background:rgba(0,230,118,0.1);color:var(--text)}
+    .sidebar-item.active{background:linear-gradient(90deg,rgba(0,230,118,0.15),rgba(0,230,118,0.05));color:var(--emerald);border-left:3px solid var(--emerald);padding-left:13px}
+    .sidebar-item-icon{font-size:18px}
+    .sidebar-footer{border-top:1px solid rgba(255,255,255,0.08);padding-top:16px;margin-top:auto}
+    .sidebar-footer a{display:block;padding:10px;border-radius:6px;color:var(--ruby);text-decoration:none;text-align:center;font-weight:600;transition:all .2s}
+    .sidebar-footer a:hover{background:rgba(255,77,77,0.1);color:#ff6666}
+    
+    .container{flex:1;padding:28px;overflow-y:auto;background:var(--navy)}
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;background:var(--glass);backdrop-filter:blur(10px);padding:16px 20px;border-radius:12px;border:1px solid rgba(255,255,255,0.08)}
+    .topbar-title h1{font-size:28px;font-weight:800;margin-bottom:4px}
+    .topbar-title p{font-size:13px;color:var(--muted)}
+    
+    .console-box{background:var(--glass);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px;display:flex;flex-direction:column}
+    .console-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px}
+    .terminal{background:rgba(0,0,0,0.4);border-radius:8px;padding:12px;height:500px;overflow:auto;font-family:monospace;font-size:12px;border:1px solid rgba(255,255,255,0.04)}
+    .log-line{padding:4px 8px;border-radius:4px;margin-bottom:4px;white-space:pre-wrap;word-break:break-word}
+    .log-install{color:#7dd3fc;background:rgba(125,211,252,0.05)}
+    .log-info{color:var(--emerald);background:rgba(0,230,118,0.05)}
+    .log-warn{color:#facc15;background:rgba(250,204,21,0.05)}
+    .log-error{color:var(--ruby);background:rgba(255,77,77,0.05)}
+    .log-meta{color:var(--muted);background:rgba(139,148,158,0.04)}
+    
     .cmd-input{display:flex;gap:8px;margin-top:12px}
-    .cmd-input input{flex:1;padding:10px;border-radius:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.06);color:#e6eef8}
-    .cmd-btn{padding:10px 16px;background:var(--accent);color:#021214;border:none;border-radius:8px;font-weight:800;cursor:pointer}
+    .cmd-input input{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:var(--text);font-size:12px}
+    .cmd-input input:focus{outline:none;border-color:var(--emerald);box-shadow:0 0 12px rgba(0,230,118,0.1)}
+    .cmd-btn{padding:10px 16px;background:linear-gradient(135deg,var(--emerald),var(--emerald-dark));color:#000;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;transition:all .2s}
+    .cmd-btn:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,230,118,0.2)}
+    .cmd-btn:active{transform:translateY(0)}
   </style>
 </head>
 <body>
-  <div class="app">
-    <aside class="sidebar">
-      <div class="brand">MC</div>
-      <nav class="side-nav">
-        <div class="nav-btn" data-page="dashboard" title="Dashboard" onclick="navigate('/dashboard.html')"><div style="font-size:20px">📊</div></div>
-        <div class="nav-btn active" data-page="console" title="Console" onclick="navigate('/console.html')"><div style="font-size:20px">💻</div></div>
-        <div class="nav-btn" data-page="files" title="File Manager" onclick="navigate('/files.html')"><div style="font-size:20px">🗂️</div></div>
-        <div class="nav-btn" data-page="backups" title="Backups" onclick="navigate('/backups.html')"><div style="font-size:20px">📦</div></div>
-        <div class="nav-btn" data-page="settings" title="Settings" onclick="navigate('/settings.html')"><div style="font-size:20px">⚙️</div></div>
-      </nav>
-      <div class="footer-actions">
-        <div class="logout-small" onclick="location.href='/logout'">Logout</div>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">Apex Panel</div>
+    <nav class="sidebar-menu">
+      <div class="sidebar-item" onclick="navigate('/dashboard.html')">
+        <span class="sidebar-item-icon">📊</span>
+        <span>Dashboard</span>
       </div>
-    </aside>
-
-    <main class="main">
-      <div class="card">
-        <div class="topbar">
-          <div>
-            <div style="font-size:18px;font-weight:800">Console</div>
-            <div style="font-size:12px;color:var(--muted)">Real-time server output</div>
-          </div>
-          <div style="text-align:right;font-size:12px;color:var(--muted)">User: <strong id="userDisplay">Admin</strong></div>
-        </div>
-
-        <div class="terminal" id="terminal">
-          <div class="log-line log-info">[INFO] Console initialized.</div>
-        </div>
-
-        <div class="cmd-input">
-          <input id="cmdInput" type="text" placeholder="Type command (e.g., help, say Hello)" autocomplete="off">
-          <button class="cmd-btn" onclick="sendCommand()">Send</button>
-        </div>
+      <div class="sidebar-item active" onclick="navigate('/console.html')">
+        <span class="sidebar-item-icon">💻</span>
+        <span>Console</span>
       </div>
-    </main>
+      <div class="sidebar-item" onclick="navigate('/files.html')">
+        <span class="sidebar-item-icon">📁</span>
+        <span>File Manager</span>
+      </div>
+      <div class="sidebar-item" onclick="navigate('/settings.html')">
+        <span class="sidebar-item-icon">⚙️</span>
+        <span>Settings</span>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="/logout">Sign Out</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="container">
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="topbar-title">
+        <h1>Server Console</h1>
+        <p>Real-time server output and commands</p>
+      </div>
+      <div style="text-align:right;font-size:12px;color:var(--muted)">
+        User: <strong id="userDisplay">Admin</strong>
+      </div>
+    </div>
+
+    <!-- CONSOLE SECTION -->
+    <div class="console-box">
+      <div class="console-title">Live Output</div>
+      <div class="terminal" id="terminal">
+        <div class="log-line log-info">[INFO] Console ready.</div>
+      </div>
+
+      <div class="cmd-input">
+        <input id="cmdInput" type="text" placeholder="Enter command (e.g., help, say Hello World)" autocomplete="off">
+        <button class="cmd-btn" onclick="sendCommand()">Send Command</button>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
@@ -78,6 +115,42 @@
 
     function navigate(page) {
       window.location.href = page;
+    }
+
+    function emitLog(type, text) {
+      const div = document.createElement('div');
+      const logClass = type === 'INSTALL' ? 'log-install' : type === 'INFO' ? 'log-info' : type === 'WARN' ? 'log-warn' : type === 'ERROR' ? 'log-error' : 'log-meta';
+      div.className = 'log-line ' + logClass;
+      div.textContent = `[${type}] ${text}`;
+      term.appendChild(div);
+      term.scrollTop = term.scrollHeight;
+    }
+
+    function sendCommand() {
+      const cmd = cmdInput.value.trim();
+      if (!cmd) return;
+      emitLog('META', 'Sending: ' + cmd);
+      socket.emit('send-command', cmd);
+      cmdInput.value = '';
+    }
+
+    cmdInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendCommand();
+    });
+
+    // Listen for console output from backend
+    socket.on('console-output', (msg) => {
+      emitLog('INFO', msg);
+    });
+
+    socket.on('install-progress', (pct) => {
+      emitLog('INSTALL', `Progress: ${pct}%`);
+    });
+
+    document.getElementById('userDisplay').textContent = localStorage.getItem('username') || 'Admin';
+  </script>
+</body>
+</html>
     }
 
     function emitLog(type, text) {
