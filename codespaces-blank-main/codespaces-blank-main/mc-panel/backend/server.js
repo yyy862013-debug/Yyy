@@ -4,7 +4,7 @@ const { Server } = require('socket.io');
 const path = require('path');
 
 // Import the engine we built earlier
-const { startServer, stopServer, sendCommand } = require('./instance-manager');
+const { startServer, stopServer, sendCommand, downloadServerJar } = require('./instance-manager');
 
 const app = express();
 const server = http.createServer(app);
@@ -35,6 +35,13 @@ io.on('connection', (socket) => {
     socket.on('send-command', (command) => {
         console.log(`[SOCKET] User sent command: ${command}`);
         sendCommand(command);
+    });
+
+    // Handle install-version event (download server.jar)
+    socket.on('install-version', (versionTag) => {
+        console.log(`[SOCKET] User requested install-version: ${versionTag}`);
+        // Pass the io instance so installer can emit progress messages
+        downloadServerJar(versionTag, io);
     });
 
     socket.on('disconnect', () => {

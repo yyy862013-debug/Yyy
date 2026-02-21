@@ -59,6 +59,16 @@
         <button id="startBtn">▶ Start Server</button>
     </div>
 
+    <h3>Startup Settings</h3>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;">
+        <label for="versionSelect" style="min-width:120px;">Server Version:</label>
+        <select id="versionSelect" style="flex:1;padding:8px;border-radius:6px;background:#1e1e1e;color:#fff;border:1px solid #333;">
+            <option value="paper-1.21">Paper 1.21 (recommended)</option>
+            <option value="paper-1.20.4">Paper 1.20.4</option>
+            <option value="vanilla-1.21">Vanilla 1.21 (not automated)</option>
+        </select>
+        <button id="installBtn" title="Download and install selected version">⬇️ Install/Update</button>
+    </div>
     <h3>Live Console</h3>
     <div class="console" id="consoleBox">
         <div class="log-line">Waiting for server logs...</div>
@@ -84,6 +94,8 @@ const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn'); // Make sure you have this button!
 const cmdInput = document.getElementById('cmdInput');
 const sendBtn = document.getElementById('sendBtn');
+const versionSelect = document.getElementById('versionSelect');
+const installBtn = document.getElementById('installBtn');
 
 // START the server
 startBtn.addEventListener('click', () => {
@@ -111,6 +123,21 @@ socket.on('console-output', (text) => {
     log.innerText = text;
     consoleBox.appendChild(log);
     consoleBox.scrollTop = consoleBox.scrollHeight;
+});
+
+// INSTALL / UPDATE selected version
+installBtn.addEventListener('click', () => {
+    const v = versionSelect.value;
+    if (!v) return;
+    installBtn.disabled = true;
+    socket.emit('install-version', v);
+    // re-enable after a short delay if something goes wrong; actual completion is via console messages
+    setTimeout(() => { installBtn.disabled = false; }, 15000);
+});
+
+// If server requests install before start, notify user
+socket.on('require-install', () => {
+    alert('server.jar is missing. Select a version and click Install/Update first.');
 });
 </script>
 
