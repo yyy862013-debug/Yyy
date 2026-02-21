@@ -112,38 +112,25 @@ async function downloadServerJar(versionTag, io) {
       const buildsData = buildsResp.data;
 
       const buildsArr = Array.isArray(buildsData.builds) ? buildsData.builds : (Array.isArray(buildsData) ? buildsData : []);
-      let downloadsData = null;
       let selectedBuild = null;
-
+      let app = null;
       for (let i = buildsArr.length - 1; i >= 0; --i) {
         const entry = buildsArr[i];
-        const candidate = entry && (entry.build || entry) || entry;
-        const downloadsInfoUrl = `https://api.papermc.io/v2/projects/paper/versions/${ver}/builds/${candidate}/downloads`;
-        io.emit('console-output', `[INSTALL] Checking build ${candidate}`);
-        try {
-          const dr = await axios.get(downloadsInfoUrl);
-          if (dr && dr.status === 200 && dr.data) {
-            downloadsData = dr.data;
-            selectedBuild = candidate;
-            break;
-          }
-        } catch (e) {
-          // try previous build
+        if (entry && entry.downloads && entry.downloads.application) {
+          selectedBuild = entry.build || entry;
+          app = entry.downloads.application;
+          break;
         }
       }
 
-      if (!downloadsData) {
+      if (!app) {
         io.emit('console-output', `[INSTALL] No downloadable Paper builds found for ${ver}`);
         throw new Error('No downloadable builds');
       }
 
-      if (downloadsData && downloadsData.downloads && downloadsData.downloads.application) {
-        const app = downloadsData.downloads.application;
-        fileName = app.name || app;
-        expectedSha256 = app.sha256 || null;
-        expectedSha1 = app.sha1 || null;
-      }
-
+      fileName = app.name || app;
+      expectedSha256 = app.sha256 || null;
+      expectedSha1 = app.sha1 || null;
       if (!fileName) fileName = `paper-${ver}-${selectedBuild}.jar`;
       fileUrl = `https://api.papermc.io/v2/projects/paper/versions/${ver}/builds/${selectedBuild}/downloads/${encodeURIComponent(fileName)}`;
       io.emit('console-output', `[INSTALL] Downloading ${fileName} from build ${selectedBuild}`);
