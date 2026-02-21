@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MC Panel - Server Settings</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            min-height: 100vh;
+            color: #ffffff;
+        }
+
+        .top-bar {
+            background: rgba(15, 20, 40, 0.95);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .save-btn {
+            background: linear-gradient(135deg, #00ff88, #00cc66);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+        }
+
+        .save-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+        }
+
+        .save-btn:active {
+            transform: scale(0.98);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+
+        .header {
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #aaa;
+            font-size: 13px;
+        }
+
+        /* SETTINGS SECTIONS */
+        .settings-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(0, 255, 136, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-icon {
+            font-size: 20px;
+        }
+
+        /* FORM GROUPS */
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .form-description {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+
+        input[type="number"],
+        input[type="text"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 13px;
+            transition: all 0.2s ease;
+            font-family: monospace;
+        }
+
+        input[type="number"]::placeholder,
+        input[type="text"]::placeholder,
+        textarea::placeholder {
+            color: #666;
+        }
+
+        input[type="number"]:focus,
+        input[type="text"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(0, 255, 136, 0.6);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.15);
+        }
+
+        select {
+            cursor: pointer;
+            padding: 10px 12px;
+        }
+
+        select option {
+            background: #1a1f3a;
+            color: #fff;
+        }
+
+        textarea {
+            font-family: monospace;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        /* SLIDER */
+        .slider-group {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+        }
+
+        .slider-field {
+            flex: 1;
+        }
+
+        .slider-value {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            padding: 8px 12px;
+            border-radius: 6px;
+            text-align: center;
+            color: #00ff88;
+            font-family: monospace;
+            font-weight: bold;
+            min-width: 80px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: rgba(0, 255, 136, 0.2);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: linear-gradient(135deg, #00ff88, #00cc66);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: linear-gradient(135deg, #00ff88, #00cc66);
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        input[type="range"]::-moz-range-thumb:hover {
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
+        }
+
+        /* TOGGLE SWITCH */
+        .toggle-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: rgba(255, 100, 100, 0.2);
+            border: 1px solid rgba(255, 100, 100, 0.4);
+            border-radius: 13px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-switch.enabled {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: rgba(0, 255, 136, 0.4);
+        }
+
+        .toggle-knob {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #fff;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-switch.enabled .toggle-knob {
+            left: 27px;
+        }
+
+        /* TWO COLUMN LAYOUT */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .startup-flags {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #00ff88;
+            max-height: 120px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        .flag-item {
+            margin-bottom: 8px;
+        }
+
+        .flag-label {
+            color: #888;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* ALERT BOX */
+        .alert {
+            background: rgba(255, 180, 0, 0.1);
+            border-left: 3px solid #ffb400;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 12px;
+            color: #ffd700;
+            line-height: 1.6;
+        }
+
+        .alert-icon {
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        /* BOTTOM ACTIONS */
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .reset-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+
+        .reset-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* SAVED INDICATOR */
+        .saved-message {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid rgba(0, 255, 136, 0.4);
+            border-radius: 6px;
+            padding: 15px 20px;
+            color: #00ff88;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+
+        .saved-message.show {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 20px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .top-bar {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOP BAR -->
+    <div class="top-bar">
+        <button class="back-btn" onclick="goBack()">← Back to Server</button>
+        <button class="save-btn" onclick="saveSettings()">💾 Save Settings</button>
+    </div>
+
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>⚙️ Server Startup Settings</h1>
+            <p>Configure Java runtime parameters and server behavior</p>
+        </div>
+
+        <form id="settingsForm" onsubmit="event.preventDefault(); saveSettings();">
+            <!-- JAVA CONFIGURATION SECTION -->
+            <div class="settings-section">
+                <div class="section-title">
+                    <span class="section-icon">☕</span>
+                    <span>Java Configuration</span>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="javaVersion">Java Version</label>
+                        <div class="form-description">Select the Java version to use for running the server</div>
+                        <select id="javaVersion">
+                            <option value="17">Java 17 (Recommended)</option>
+                            <option value="16">Java 16</option>
+                            <option value="11">Java 11</option>
+                            <option value="8">Java 8</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="javaPath">Java Path</label>
+                        <div class="form-description">Optional: Custom Java executable path</div>
+                        <input type="text" id="javaPath" placeholder="/usr/bin/java" value="/usr/bin/java">
+                    </div>
+                </div>
+            </div>
+
+            <!-- MEMORY ALLOCATION SECTION -->
+            <div class="settings-section">
+                <div class="section-title">
+                    <span class="section-icon">💾</span>
+                    <span>Memory Allocation</span>
+                </div>
+
+                <div class="alert">
+                    <span class="alert-icon">⚠️</span>
+                    Allocating more memory improves performance but requires available system RAM. Restart required to apply changes.
+                </div>
+
+                <div class="form-group">
+                    <label>Minimum RAM (Xms)</label>
+                    <div class="form-description">Default starting memory for Java process</div>
+                    <div class="slider-group">
+                        <div class="slider-field">
+                            <input type="range" id="minRam" min="512" max="8192" step="512" value="1024" oninput="updateMinRam()">
+                        </div>
+                        <div class="slider-value" id="minRamValue">1 GB</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Maximum RAM (Xmx)</label>
+                    <div class="form-description">Maximum memory allocation for Java process</div>
+                    <div class="slider-group">
+                        <div class="slider-field">
+                            <input type="range" id="maxRam" min="512" max="8192" step="512" value="2048" oninput="updateMaxRam()">
+                        </div>
+                        <div class="slider-value" id="maxRamValue">2 GB</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="systemRam">System Information</label>
+                    <div class="form-description">Total available RAM on your server machine</div>
+                    <input type="text" disabled value="8 GB Available" style="color: #888;">
+                </div>
+            </div>
+
+            <!-- STARTUP FLAGS SECTION -->
+            <div class="settings-section">
+                <div class="section-title">
+                    <span class="section-icon">🚀</span>
+                    <span>Startup Flags & Arguments</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="startupFlags">Custom JVM Arguments</label>
+                    <div class="form-description">Advanced users only. Add custom Java parameters for optimization</div>
+                    <textarea id="startupFlags" placeholder="Add custom JVM flags...">-XX:+UseG1GC
+-XX:MaxGCPauseMillis=200
+-XX:+UnlockExperimentalVMOptions
+-XX:G1NewCollectionPercentage=30
+-XX:G1MaxNewGenPercentSize=40</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Current Startup Command</label>
+                    <div class="startup-flags" id="startupCommand">
+                        <div class="flag-label">Final command:</div>
+                        <div class="flag-item">java -Xms1024M -Xmx2048M -XX:+UseG1GC [others...] -jar server.jar nogui</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SERVER BEHAVIOR SECTION -->
+            <div class="settings-section">
+                <div class="section-title">
+                    <span class="section-icon">🎮</span>
+                    <span>Server Behavior</span>
+                </div>
+
+                <div class="form-group">
+                    <div class="toggle-group">
+                        <div>
+                            <label style="margin-bottom: 5px;">Accept EULA</label>
+                            <div class="form-description">Required to run Minecraft server</div>
+                        </div>
+                        <div class="toggle-switch enabled" id="eulaToggle" onclick="toggleEula()">
+                            <div class="toggle-knob"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="toggle-group">
+                        <div>
+                            <label style="margin-bottom: 5px;">Auto-Restart on Crash</label>
+                            <div class="form-description">Automatically restart server if it stops unexpectedly</div>
+                        </div>
+                        <div class="toggle-switch enabled" id="autoRestartToggle" onclick="toggleAutoRestart()">
+                            <div class="toggle-knob"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="toggle-group">
+                        <div>
+                            <label style="margin-bottom: 5px;">Enable Query</label>
+                            <div class="form-description">Allow server monitoring via query protocol</div>
+                        </div>
+                        <div class="toggle-switch" id="queryToggle" onclick="toggleQuery()">
+                            <div class="toggle-knob"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="toggle-group">
+                        <div>
+                            <label style="margin-bottom: 5px;">Enable RCON</label>
+                            <div class="form-description">Remote console access for server commands</div>
+                        </div>
+                        <div class="toggle-switch" id="rconToggle" onclick="toggleRcon()">
+                            <div class="toggle-knob"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FORM ACTIONS -->
+            <div class="form-actions">
+                <button type="button" class="reset-btn" onclick="resetSettings()">↻ Reset to Defaults</button>
+                <button type="submit" class="save-btn">💾 Save Settings</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- SAVED NOTIFICATION -->
+    <div class="saved-message" id="savedMessage">
+        ✓ Settings saved successfully!
+    </div>
+
+    <script>
+        // Initial values
+        const defaultSettings = {
+            javaVersion: '17',
+            javaPath: '/usr/bin/java',
+            minRam: 1024,
+            maxRam: 2048,
+            startupFlags: `-XX:+UseG1GC
+-XX:MaxGCPauseMillis=200
+-XX:+UnlockExperimentalVMOptions
+-XX:G1NewCollectionPercentage=30
+-XX:G1MaxNewGenPercentSize=40`,
+            eulaAccepted: true,
+            autoRestart: true,
+            queryEnabled: false,
+            rconEnabled: false
+        };
+
+        // Load settings from localStorage
+        function loadSettings() {
+            const saved = localStorage.getItem('serverSettings');
+            if (saved) {
+                const settings = JSON.parse(saved);
+                if (settings.javaVersion) document.getElementById('javaVersion').value = settings.javaVersion;
+                if (settings.javaPath) document.getElementById('javaPath').value = settings.javaPath;
+                if (settings.minRam) document.getElementById('minRam').value = settings.minRam;
+                if (settings.maxRam) document.getElementById('maxRam').value = settings.maxRam;
+                if (settings.startupFlags) document.getElementById('startupFlags').value = settings.startupFlags;
+            }
+        }
+
+        function updateMinRam() {
+            const value = parseInt(document.getElementById('minRam').value);
+            document.getElementById('minRamValue').textContent = (value / 1024).toFixed(1) + ' GB';
+        }
+
+        function updateMaxRam() {
+            const value = parseInt(document.getElementById('maxRam').value);
+            document.getElementById('maxRamValue').textContent = (value / 1024).toFixed(1) + ' GB';
+        }
+
+        function toggleEula() {
+            document.getElementById('eulaToggle').classList.toggle('enabled');
+        }
+
+        function toggleAutoRestart() {
+            document.getElementById('autoRestartToggle').classList.toggle('enabled');
+        }
+
+        function toggleQuery() {
+            document.getElementById('queryToggle').classList.toggle('enabled');
+        }
+
+        function toggleRcon() {
+            document.getElementById('rconToggle').classList.toggle('enabled');
+        }
+
+        function saveSettings() {
+            const settings = {
+                javaVersion: document.getElementById('javaVersion').value,
+                javaPath: document.getElementById('javaPath').value,
+                minRam: parseInt(document.getElementById('minRam').value),
+                maxRam: parseInt(document.getElementById('maxRam').value),
+                startupFlags: document.getElementById('startupFlags').value,
+                eulaAccepted: document.getElementById('eulaToggle').classList.contains('enabled'),
+                autoRestart: document.getElementById('autoRestartToggle').classList.contains('enabled'),
+                queryEnabled: document.getElementById('queryToggle').classList.contains('enabled'),
+                rconEnabled: document.getElementById('rconToggle').classList.contains('enabled')
+            };
+
+            localStorage.setItem('serverSettings', JSON.stringify(settings));
+            console.log('Settings saved:', settings);
+
+            // Show saved message
+            const msg = document.getElementById('savedMessage');
+            msg.classList.add('show');
+            setTimeout(() => msg.classList.remove('show'), 3000);
+        }
+
+        function resetSettings() {
+            if (confirm('Reset all settings to defaults? This cannot be undone.')) {
+                document.getElementById('javaVersion').value = defaultSettings.javaVersion;
+                document.getElementById('javaPath').value = defaultSettings.javaPath;
+                document.getElementById('minRam').value = defaultSettings.minRam;
+                document.getElementById('maxRam').value = defaultSettings.maxRam;
+                document.getElementById('startupFlags').value = defaultSettings.startupFlags;
+                
+                updateMinRam();
+                updateMaxRam();
+
+                if (defaultSettings.eulaAccepted) {
+                    document.getElementById('eulaToggle').classList.add('enabled');
+                } else {
+                    document.getElementById('eulaToggle').classList.remove('enabled');
+                }
+
+                if (defaultSettings.autoRestart) {
+                    document.getElementById('autoRestartToggle').classList.add('enabled');
+                } else {
+                    document.getElementById('autoRestartToggle').classList.remove('enabled');
+                }
+
+                saveSettings();
+            }
+        }
+
+        function goBack() {
+            window.location.href = '/server.html';
+        }
+
+        // Initialize
+        document.getElementById('minRam').addEventListener('change', updateMinRam);
+        document.getElementById('maxRam').addEventListener('change', updateMaxRam);
+        loadSettings();
+        updateMinRam();
+        updateMaxRam();
+
+        // Check authentication
+        if (!localStorage.getItem('isLoggedIn')) {
+            window.location.href = '/login.html';
+        }
+    </script>
+
+</body>
+</html>
