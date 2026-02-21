@@ -1,4 +1,4 @@
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
@@ -13,6 +13,147 @@ let currentDownload = {
   promise: null,
   targetPath: null
 };
+
+// Check if Java is available on the host
+function checkJavaAvailable(io) {
+  try {
+    const res = spawnSync('java', ['-version'], { stdio: 'ignore' });
+    if (res.error) {
+      io && io.emit('console-output', `[INSTALL] Java not found: ${res.error.message}`);
+      return false;
+    }
+    if (res.status !== 0 && res.status !== null) {
+      io && io.emit('console-output', `[INSTALL] Java returned status ${res.status}`);
+      // still return true because some java versions print version to stderr but exit 0
+    }
+    return true;
+  } catch (e) {
+    io && io.emit('console-output', `[INSTALL] Java check failed: ${e.message}`);
+    return false;
+  }
+}
+
+// Smart downloader with progress, abort and optional checksum verification
+async function smartDownload(url, targetPath, io, opts = {}) {
+  const { expectedSha256 = null, expectedSha1 = null, retries = 2, timeout = 0 } = opts;
+
+  for (let attempt = 0; attempt <= retries; ++attempt) {
+    const controller = new AbortController();
+    currentDownload.controller = controller;
+    currentDownload.targetPath = targetPath;
+
+    try {
+      io && io.emit('console-output', `[DOWNLOAD] Fetching: ${url} (attempt ${attempt + 1})`);
+      // include metadata when provided in opts (e.g., { type, version })
+      const meta = opts.meta || null;
+      io && io.emit('install-start', meta);
+
+      const resp = await axios.get(url, { responseType: 'stream', signal: controller.signal, timeout: timeout || 0 });
+      const total = resp.headers['content-length'] ? parseInt(resp.headers['content-length'], 10) : null;
+
+      // Ensure directory exists
+      try { fs.mkdirSync(path.dirname(targetPath), { recursive: true }); } catch (e) {}
+
+      // Remove any existing file
+      try { if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath); } catch (e) {}
+
+      const writer = fs.createWriteStream(targetPath);
+      currentDownload.writer = writer;
+
+      let received = 0;
+      let lastEmitPct = -1;
+      let lastEmitTime = Date.now();
+
+      resp.data.on('data', (chunk) => {
+        received += chunk.length;
+        if (total) {
+          const pct = Math.floor((received / total) * 100);
+          if (pct !== lastEmitPct && (pct - lastEmitPct >= 2 || Date.now() - lastEmitTime >= 2000)) {
+            io && io.emit('install-progress', Object.assign({ pct }, meta || {}));
+            io && io.emit('console-output', `[DOWNLOAD] ${pct}%`);
+            lastEmitPct = pct;
+            lastEmitTime = Date.now();
+          }
+        } else {
+          if (Date.now() - lastEmitTime > 2000) {
+            io && io.emit('console-output', `[DOWNLOAD] ${Math.floor(received / 1024)} KB`);
+            lastEmitTime = Date.now();
+          }
+        }
+      });
+
+      resp.data.pipe(writer);
+
+      await new Promise((resolve, reject) => {
+        writer.on('finish', resolve);
+        writer.on('error', reject);
+        resp.data.on('error', reject);
+      });
+
+      // Optional checksum verification
+      if ((expectedSha256 || expectedSha1) && fs.existsSync(targetPath)) {
+        io && io.emit('console-output', `[DOWNLOAD] Verifying checksum...`);
+        const buf = fs.readFileSync(targetPath);
+        if (expectedSha256) {
+          const sum = crypto.createHash('sha256').update(buf).digest('hex');
+          if (sum !== expectedSha256) {
+            io && io.emit('console-output', `[DOWNLOAD] sha256 mismatch (expected ${expectedSha256.slice(0,8)}..., got ${sum.slice(0,8)}...)`);
+            try { fs.unlinkSync(targetPath); } catch (e) {}
+            throw new Error('Checksum mismatch');
+          }
+        }
+        if (expectedSha1) {
+          const sum1 = crypto.createHash('sha1').update(buf).digest('hex');
+          if (sum1 !== expectedSha1) {
+            io && io.emit('console-output', `[DOWNLOAD] sha1 mismatch`);
+            try { fs.unlinkSync(targetPath); } catch (e) {}
+            throw new Error('Checksum mismatch');
+          }
+        }
+        io && io.emit('console-output', `[DOWNLOAD] Checksum OK`);
+      }
+
+      // success
+      io && io.emit('install-progress', Object.assign({ pct: 100 }, meta || {}));
+      io && io.emit('console-output', `[DOWNLOAD] Completed: ${path.basename(targetPath)}`);
+
+      // clear download state
+      currentDownload.controller = null;
+      currentDownload.writer = null;
+      currentDownload.promise = null;
+      currentDownload.targetPath = null;
+
+      return true;
+    } catch (err) {
+      // Abort-specific handling
+      if (err && err.name === 'CanceledError') {
+        io && io.emit('console-output', `[DOWNLOAD] Aborted by user.`);
+        try { if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath); } catch (e) {}
+        currentDownload.controller = null;
+        currentDownload.writer = null;
+        currentDownload.promise = null;
+        currentDownload.targetPath = null;
+        io && io.emit('install-cancelled', meta);
+        throw err;
+      }
+
+      io && io.emit('console-output', `[DOWNLOAD] Error: ${err && err.message}`);
+      try { if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath); } catch (e) {}
+      currentDownload.controller = null;
+      currentDownload.writer = null;
+      currentDownload.promise = null;
+      currentDownload.targetPath = null;
+
+      if (attempt < retries) {
+        io && io.emit('console-output', `[DOWNLOAD] Retrying... (${attempt + 1}/${retries})`);
+        await new Promise(r => setTimeout(r, 1200));
+        continue;
+      }
+
+      throw err;
+    }
+  }
+}
 
 const SETTINGS_PATH = path.join(__dirname, 'settings.json');
 
@@ -162,80 +303,11 @@ async function downloadServerJar(versionTag, io) {
             return false;
     }
 
-    const targetPath = path.join(serverPath, 'server.jar');
-    if (fs.existsSync(targetPath)) {
-      try { fs.unlinkSync(targetPath); } catch (e) { }
-    }
-
-    const controller = new AbortController();
-    currentDownload.controller = controller;
-
-    io.emit('install-start');
-    const resp = await axios.get(fileUrl, { responseType: 'stream', signal: controller.signal });
-    const total = resp.headers['content-length'] ? parseInt(resp.headers['content-length'], 10) : null;
-
-    const writer = fs.createWriteStream(targetPath);
-    currentDownload.writer = writer;
-
-    let received = 0;
-    let lastEmitPct = -1;
-    let lastEmitTime = Date.now();
-
-    resp.data.on('data', (chunk) => {
-      received += chunk.length;
-      if (total) {
-        const pct = Math.floor((received / total) * 100);
-        if (pct !== lastEmitPct && (pct - lastEmitPct >= 2 || Date.now() - lastEmitTime >= 2000)) {
-          io.emit('install-progress', pct);
-          io.emit('console-output', `[INSTALL] Downloaded ${pct}%`);
-          lastEmitPct = pct;
-          lastEmitTime = Date.now();
-        }
-      } else {
-        io.emit('console-output', `[INSTALL] Downloaded ${Math.floor(received / 1024)} KB`);
-      }
-    });
-
-    resp.data.pipe(writer);
-
-    await new Promise((resolve, reject) => {
-      writer.on('finish', resolve);
-      writer.on('error', reject);
-      resp.data.on('error', reject);
-    });
-
-    if (expectedSha256 || expectedSha1) {
-      io.emit('console-output', `[INSTALL] Verifying checksum...`);
-      const buf = fs.readFileSync(targetPath);
-      if (expectedSha256) {
-        const sum = crypto.createHash('sha256').update(buf).digest('hex');
-        if (sum !== expectedSha256) {
-          io.emit('console-output', `[INSTALL] sha256 mismatch`);
-          try { fs.unlinkSync(targetPath); } catch (e) {}
-          throw new Error('Checksum mismatch');
-        }
-      }
-      if (expectedSha1) {
-        const sum = crypto.createHash('sha1').update(buf).digest('hex');
-        if (sum !== expectedSha1) {
-          io.emit('console-output', `[INSTALL] sha1 mismatch`);
-          try { fs.unlinkSync(targetPath); } catch (e) {}
-          throw new Error('Checksum mismatch');
-        }
-      }
-      io.emit('console-output', `[INSTALL] Checksum OK`);
-    }
-
-    io.emit('install-progress', 100);
-    io.emit('console-output', `[INSTALL] Download complete. server.jar installed.`);
-    io.emit('install-complete');
-
-    currentDownload.controller = null;
-    currentDownload.writer = null;
-    currentDownload.promise = null;
-    currentDownload.targetPath = null;
-
-    return true;
+      const targetPath = path.join(serverPath, 'server.jar');
+      await smartDownload(fileUrl, targetPath, io, { expectedSha256, expectedSha1, meta: { type: project, version: ver } });
+      io.emit('console-output', `[INSTALL] Download complete. server.jar installed.`);
+      io.emit('install-complete');
+      return true;
   } catch (err) {
     if (err && err.response && err.response.status) io.emit('console-output', `[INSTALL] HTTP ${err.response.status} ${err.config && err.config.url}`);
     io.emit('console-output', `[INSTALL] Error downloading: ${err && err.message}`);
@@ -403,19 +475,19 @@ async function deployForgeServer(version, serverPath, io) {
     io.emit('console-output', `[DEPLOY] Downloading Forge installer...`);
     
     const installerPath = path.join(serverPath, `forge-installer-${version}.jar`);
-    const resp = await axios.get(installerUrl, { responseType: 'stream' });
-    const writer = fs.createWriteStream(installerPath);
-    
-    resp.data.pipe(writer);
-    await new Promise((resolve, reject) => {
-      writer.on('finish', resolve);
-      writer.on('error', reject);
-    });
-    
-    io.emit('console-output', `[DEPLOY] Running Forge installer...`);
-    
-    // Run Forge installer
-    await runForgeInstaller(installerPath, serverPath, io);
+    try {
+      // Use smartDownload for installer as well
+      await smartDownload(installerUrl, installerPath, io, { retries: 2, timeout: 300000, meta: { type: 'forge', version } });
+
+      io.emit('console-output', `[DEPLOY] Running Forge installer...`);
+      if (!checkJavaAvailable(io)) throw new Error('Java not found; required to run Forge installer');
+
+      // Run Forge installer
+      await runForgeInstaller(installerPath, serverPath, io);
+    } finally {
+      // Ensure installer is removed if present
+      try { if (fs.existsSync(installerPath)) fs.unlinkSync(installerPath); } catch (e) {}
+    }
     
     const settings = readSettings();
     settings.selectedVersion = `forge-${version}`;
@@ -445,23 +517,17 @@ async function deployFabricServer(version, serverPath, io) {
     const installerVersion = installerResp.data[0]?.version || 'latest';
     
     const downloadUrl = `https://maven.fabricmc.net/net/fabricmc/fabric-installer/${installerVersion}/fabric-installer-${installerVersion}.jar`;
-    
     io.emit('console-output', `[DEPLOY] Downloading Fabric installer...`);
     const installerPath = path.join(serverPath, `fabric-installer-${version}.jar`);
-    
-    const resp = await axios.get(downloadUrl, { responseType: 'stream' });
-    const writer = fs.createWriteStream(installerPath);
-    
-    resp.data.pipe(writer);
-    await new Promise((resolve, reject) => {
-      writer.on('finish', resolve);
-      writer.on('error', reject);
-    });
-    
-    io.emit('console-output', `[DEPLOY] Running Fabric installer...`);
-    
-    // Run Fabric installer
-    await runFabricInstaller(installerPath, version, serverPath, io);
+    try {
+      await smartDownload(downloadUrl, installerPath, io, { retries: 2, timeout: 300000, meta: { type: 'fabric', version } });
+      io.emit('console-output', `[DEPLOY] Running Fabric installer...`);
+      if (!checkJavaAvailable(io)) throw new Error('Java not found; required to run Fabric installer');
+      // Run Fabric installer
+      await runFabricInstaller(installerPath, version, serverPath, io);
+    } finally {
+      try { if (fs.existsSync(installerPath)) fs.unlinkSync(installerPath); } catch (e) {}
+    }
     
     const settings = readSettings();
     settings.selectedVersion = `fabric-${version}`;

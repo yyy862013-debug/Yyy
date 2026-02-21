@@ -224,6 +224,10 @@
             padding-left: 9px;
         }
 
+        /* Per-card progress */
+        .card-progress { height: 8px; width: 100%; background: rgba(255,255,255,0.03); border-radius: 6px; overflow: hidden; margin-top: 12px; display: none }
+        .card-progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg,var(--emerald),var(--emerald-dark)); transition: width 0.25s ease }
+
         /* Loading Spinner */
         .spinner {
             display: inline-block;
@@ -455,6 +459,7 @@
                 <div class="version-dropdown" data-software="paper">
                     <div class="spinner"></div> Loading versions...
                 </div>
+                <div class="card-progress" data-software="paper"><div class="card-progress-bar"></div></div>
                 <div class="deploy-section">
                     <button class="deploy-btn" onclick="deployVersion(event, 'paper')">Deploy</button>
                 </div>
@@ -469,6 +474,7 @@
                 <div class="version-dropdown" data-software="spigot">
                     <div class="spinner"></div> Loading versions...
                 </div>
+                <div class="card-progress" data-software="spigot"><div class="card-progress-bar"></div></div>
                 <div class="deploy-section">
                     <button class="deploy-btn" onclick="deployVersion(event, 'spigot')">Deploy</button>
                 </div>
@@ -483,6 +489,7 @@
                 <div class="version-dropdown" data-software="vanilla">
                     <div class="spinner"></div> Loading versions...
                 </div>
+                <div class="card-progress" data-software="vanilla"><div class="card-progress-bar"></div></div>
                 <div class="deploy-section">
                     <button class="deploy-btn" onclick="deployVersion(event, 'vanilla')">Deploy</button>
                 </div>
@@ -497,6 +504,7 @@
                 <div class="version-dropdown" data-software="snapshot">
                     <div class="spinner"></div> Loading versions...
                 </div>
+                <div class="card-progress" data-software="snapshot"><div class="card-progress-bar"></div></div>
                 <div class="deploy-section">
                     <button class="deploy-btn" onclick="deployVersion(event, 'snapshot')">Deploy</button>
                 </div>
@@ -511,6 +519,7 @@
                 <div class="version-dropdown" data-software="forge">
                     <div class="spinner"></div> Loading versions...
                 </div>
+                <div class="card-progress" data-software="forge"><div class="card-progress-bar"></div></div>
                 <div class="deploy-section">
                     <button class="deploy-btn" onclick="deployVersion(event, 'forge')">Deploy</button>
                 </div>
@@ -525,6 +534,7 @@
                 <div class="version-dropdown" data-software="fabric">
                     <div class="spinner"></div> Loading versions...
                 </div>
+                <div class="card-progress" data-software="fabric"><div class="card-progress-bar"></div></div>
                 <div class="deploy-section">
                     <button class="deploy-btn" onclick="deployVersion(event, 'fabric')">Deploy</button>
                 </div>
@@ -543,6 +553,7 @@
                         Find modpacks at <strong>curseforge.com</strong> and use the ID from the URL.
                     </div>
                 </div>
+                <div class="card-progress" data-software="curseforge"><div class="card-progress-bar"></div></div>
                 <div class="deploy-section">
                     <button class="deploy-btn" onclick="deployVersion(event, 'curseforge')">Deploy</button>
                 </div>
@@ -736,32 +747,79 @@
             console.log('Server:', msg);
         });
 
-        socket.on('install-start', () => {
-            const wrap = document.getElementById('global-install-progress');
-            const bar = document.getElementById('global-install-bar');
+        // Helpers for per-card progress
+        function showCardProgress(type) {
+            const wrap = document.querySelector(`.card-progress[data-software="${type}"]`);
+            const bar = wrap?.querySelector('.card-progress-bar');
             if (wrap && bar) {
-                bar.style.width = '2%';
                 wrap.style.display = 'block';
+                bar.style.width = '2%';
+            }
+        }
+
+        function updateCardProgress(type, pct) {
+            const wrap = document.querySelector(`.card-progress[data-software="${type}"]`);
+            const bar = wrap?.querySelector('.card-progress-bar');
+            if (bar) {
+                bar.style.width = Math.max(2, pct) + '%';
+            }
+        }
+
+        function completeCardProgress(type) {
+            const wrap = document.querySelector(`.card-progress[data-software="${type}"]`);
+            const bar = wrap?.querySelector('.card-progress-bar');
+            if (bar) bar.style.width = '100%';
+            setTimeout(() => { if (wrap) { wrap.style.display = 'none'; bar.style.width = '0%'; } }, 1200);
+        }
+
+        function cancelCardProgress(type) {
+            const wrap = document.querySelector(`.card-progress[data-software="${type}"]`);
+            const bar = wrap?.querySelector('.card-progress-bar');
+            if (bar) bar.style.width = '0%';
+            if (wrap) wrap.style.display = 'none';
+        }
+
+        // install events: payload may be object {type, version, pct} or simple number
+        socket.on('install-start', (meta) => {
+            if (meta && meta.type) { showCardProgress(meta.type); } else {
+                const wrap = document.getElementById('global-install-progress');
+                const bar = document.getElementById('global-install-bar');
+                if (wrap && bar) { bar.style.width = '2%'; wrap.style.display = 'block'; }
             }
         });
 
-        socket.on('install-progress', (pct) => {
-            const bar = document.getElementById('global-install-bar');
-            if (bar) bar.style.width = (Math.max(2, pct)) + '%';
+        socket.on('install-progress', (data) => {
+            // data might be number or object
+            if (typeof data === 'number') {
+                const bar = document.getElementById('global-install-bar');
+                if (bar) bar.style.width = (Math.max(2, data)) + '%';
+                return;
+            }
+            const pct = data.pct || 0;
+            if (data.type) {
+                updateCardProgress(data.type, pct);
+            } else {
+                const bar = document.getElementById('global-install-bar');
+                if (bar) bar.style.width = (Math.max(2, pct)) + '%';
+            }
         });
 
-        socket.on('install-complete', () => {
-            const wrap = document.getElementById('global-install-progress');
-            const bar = document.getElementById('global-install-bar');
-            if (bar) bar.style.width = '100%';
-            setTimeout(() => { if (wrap) wrap.style.display = 'none'; if (bar) bar.style.width = '0%'; }, 1200);
+        socket.on('install-complete', (meta) => {
+            if (meta && meta.type) { completeCardProgress(meta.type); } else {
+                const wrap = document.getElementById('global-install-progress');
+                const bar = document.getElementById('global-install-bar');
+                if (bar) bar.style.width = '100%';
+                setTimeout(() => { if (wrap) wrap.style.display = 'none'; if (bar) bar.style.width = '0%'; }, 1200);
+            }
         });
 
-        socket.on('install-cancelled', () => {
-            const wrap = document.getElementById('global-install-progress');
-            const bar = document.getElementById('global-install-bar');
-            if (bar) bar.style.width = '0%';
-            if (wrap) wrap.style.display = 'none';
+        socket.on('install-cancelled', (meta) => {
+            if (meta && meta.type) { cancelCardProgress(meta.type); } else {
+                const wrap = document.getElementById('global-install-progress');
+                const bar = document.getElementById('global-install-bar');
+                if (bar) bar.style.width = '0%';
+                if (wrap) wrap.style.display = 'none';
+            }
         });
     </script>
 </body>
