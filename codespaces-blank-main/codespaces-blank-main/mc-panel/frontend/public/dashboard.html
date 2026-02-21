@@ -1,403 +1,190 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MC Panel - Dashboard</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>MC Panel — Dashboard</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root{
+            --bg:#0f172a;
+            --accent:#10b981;
+            --muted:rgba(255,255,255,0.35);
+            --glass: rgba(15,23,42,0.55);
         }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
-            min-height: 100vh;
-            color: #ffffff;
-            display: flex;
-        }
-
-        /* SIDEBAR */
-        .sidebar {
-            width: 250px;
-            background: rgba(15, 20, 40, 0.9);
-            border-right: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 30px 0;
-            display: flex;
-            flex-direction: column;
-            position: fixed;
-            height: 100vh;
-            overflow-y: auto;
-            backdrop-filter: blur(10px);
-        }
-
-        .sidebar-logo {
-            text-align: center;
-            margin-bottom: 40px;
-            padding: 0 20px;
-        }
-
-        .sidebar-logo-icon {
-            font-size: 40px;
-            margin-bottom: 10px;
-        }
-
-        .sidebar-logo-text {
-            font-size: 18px;
-            font-weight: bold;
-            letter-spacing: 1px;
-        }
-
-        .sidebar-nav {
-            flex: 1;
-        }
-
-        .nav-item {
-            padding: 15px 20px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            color: #aaa;
-            font-size: 14px;
-            border-left: 3px solid transparent;
-        }
-
-        .nav-item:hover {
-            background: rgba(0, 255, 136, 0.1);
-            color: #00ff88;
-            border-left-color: #00ff88;
-        }
-
-        .nav-item.active {
-            background: rgba(0, 255, 136, 0.15);
-            color: #00ff88;
-            border-left-color: #00ff88;
-        }
-
-        .nav-icon {
-            font-size: 18px;
-            min-width: 20px;
-        }
-
-        .sidebar-footer {
-            padding: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            margin-top: auto;
-        }
-
-        .logout-btn {
-            width: 100%;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: #fff;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .logout-btn:hover {
-            background: rgba(255, 100, 100, 0.2);
-            border-color: rgba(255, 100, 100, 0.4);
-            color: #ff6464;
-        }
-
-        /* MAIN CONTENT */
-        .main-content {
-            flex: 1;
-            margin-left: 250px;
-            padding: 40px;
-            overflow-y: auto;
-            max-height: 100vh;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 40px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .header-title h1 {
-            font-size: 32px;
-            font-weight: bold;
-            color: #ffffff;
-        }
-
-        .header-title p {
-            font-size: 13px;
-            color: #888;
-            margin-top: 5px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #00ff88, #00cc66);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            color: #000;
-        }
-
-        .user-name {
-            font-size: 14px;
-            color: #fff;
-        }
-
-        /* SERVERS GRID */
-        .servers-section {
-            margin-bottom: 40px;
-        }
-
-        .section-title {
-            font-size: 20px;
-            font-weight: bold;
-            margin-bottom: 20px;
-            color: #ffffff;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .servers-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-        }
-
-        /* SERVER CARD */
-        .server-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(0, 255, 136, 0.2);
-            border-radius: 12px;
-            padding: 24px;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .server-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #00ff88, #00cc66);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .server-card:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(0, 255, 136, 0.5);
-            transform: translateY(-4px);
-            box-shadow: 0 10px 40px rgba(0, 255, 136, 0.1);
-        }
-
-        .server-card:hover::before {
-            opacity: 1;
-        }
-
-        .server-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: start;
-            margin-bottom: 20px;
-        }
-
-        .server-name {
-            font-size: 18px;
-            font-weight: bold;
-            color: #00ff88;
-        }
-
-        .server-icon {
-            font-size: 32px;
-        }
-
-        .server-status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-top: 10px;
-        }
-
-        .status-online {
-            background: rgba(0, 255, 136, 0.2);
-            color: #00ff88;
-            border: 1px solid rgba(0, 255, 136, 0.4);
-        }
-
-        .status-offline {
-            background: rgba(255, 100, 100, 0.2);
-            color: #ff6464;
-            border: 1px solid rgba(255, 100, 100, 0.4);
-        }
-
-        .server-info {
-            margin: 20px 0;
-        }
-
-        .info-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            font-size: 13px;
-        }
-
-        .info-label {
-            color: #aaa;
-        }
-
-        .info-value {
-            color: #00ff88;
-            font-weight: bold;
-            font-family: monospace;
-        }
-
-        .ram-bar {
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
-            margin-top: 8px;
-            overflow: hidden;
-        }
-
-        .ram-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #00ff88, #00cc66);
-            transition: width 0.3s ease;
-            border-radius: 3px;
-        }
-
-        .server-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .btn {
-            flex: 1;
-            padding: 10px;
-            border: none;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .btn-manage {
-            background: linear-gradient(135deg, #00ff88, #00cc66);
-            color: #000;
-        }
-
-        .btn-manage:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.3);
-        }
-
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: rgba(255, 255, 255, 0.4);
-        }
-
-        /* EMPTY STATE */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #888;
-        }
-
-        .empty-icon {
-            font-size: 64px;
-            margin-bottom: 20px;
-        }
-
-        .empty-text {
-            font-size: 18px;
-            margin-bottom: 10px;
-        }
-
-        .empty-subtext {
-            font-size: 13px;
-            color: #666;
-        }
-
-        @media (max-width: 1024px) {
-            .sidebar {
-                width: 200px;
-            }
-
-            .main-content {
-                margin-left: 200px;
-                padding: 20px;
-            }
-
-            .servers-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                position: absolute;
-                width: 200px;
-                height: auto;
-                z-index: 1000;
-                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-            }
-
-            .main-content {
-                margin-left: 0;
-            }
-
-            .header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 20px;
-            }
-        }
+        *{box-sizing:border-box;margin:0;padding:0}
+        html,body{height:100%;font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial;color:#e6eef8;background:linear-gradient(180deg,var(--bg),#071029)}
+        .app{display:flex;min-height:100vh}
+        .sidebar{width:84px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.05));backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;padding:18px 8px}
+        .brand{font-weight:700;color:var(--accent);margin-bottom:8px}
+        .side-nav{display:flex;flex-direction:column;gap:10px;margin-top:18px;width:100%;align-items:center}
+        .nav-btn{width:56px;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;transition:all .18s}
+        .nav-btn:hover{transform:translateY(-4px);color:#fff;box-shadow:0 6px 30px rgba(16,185,129,0.12)}
+        .nav-btn.active{background:linear-gradient(180deg,rgba(16,185,129,0.12),rgba(16,185,129,0.06));color:var(--accent);box-shadow:0 8px 28px rgba(16,185,129,0.14)}
+        .footer-actions{margin-top:auto;display:flex;flex-direction:column;gap:8px}
+        .logout-small{font-size:12px;color:var(--muted);cursor:pointer}
+        .main{flex:1;padding:28px}
+        .card{background:var(--glass);backdrop-filter:blur(10px);border-radius:12px;padding:20px;border:1px solid rgba(255,255,255,0.04)}
+        .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+        .status-badge{display:flex;align-items:center;gap:10px}
+        .status-pill{padding:8px 14px;border-radius:999px;font-weight:700;font-size:13px;display:inline-flex;align-items:center;gap:8px;color:#04201a}
+        .status-online{background:linear-gradient(90deg,#6ef0b6,#10b981);box-shadow:0 8px 40px rgba(16,185,129,0.18)}
+        .status-offline{background:linear-gradient(90deg,#ffb3b3,#ff6b6b);box-shadow:0 8px 40px rgba(255,107,107,0.12)}
+        .status-install{background:linear-gradient(90deg,#ffd87a,#ffb347);box-shadow:0 8px 40px rgba(255,180,75,0.12)}
+        .metrics{display:flex;gap:12px;margin-top:8px}
+        .metric{flex:1;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column;gap:6px}
+        .metric .label{font-size:12px;color:var(--muted)}
+        .metric .value{font-weight:700;color:#fff;font-size:18px}
+        .grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-top:18px}
+        .terminal{background:linear-gradient(180deg,rgba(0,0,0,0.45),rgba(0,0,0,0.25));border-radius:10px;padding:12px;height:520px;overflow:auto;border:1px solid rgba(255,255,255,0.03);font-family:monospace;font-size:13px}
+        .log-line{padding:6px 8px;border-radius:6px;margin-bottom:6px;white-space:pre-wrap}
+        .log-install{color:#7dd3fc;background:rgba(125,211,252,0.03);border:1px solid rgba(125,211,252,0.04)}
+        .log-info{color:#34d399;background:rgba(52,211,153,0.03);border:1px solid rgba(52,211,153,0.04)}
+        .log-warn{color:#facc15;background:rgba(250,204,21,0.03);border:1px solid rgba(250,204,21,0.04)}
+        .log-error{color:#fb7185;background:rgba(251,113,133,0.03);border:1px solid rgba(251,113,133,0.04)}
+        .quick-actions{display:flex;align-items:center;justify-content:space-between;gap:12px}
+        .version-select{padding:10px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);color:#e6eef8}
+        .install-btn{padding:10px 16px;background:linear-gradient(90deg,var(--accent),#34d399);color:#021214;border-radius:10px;border:none;font-weight:800;cursor:pointer;box-shadow:0 6px 30px rgba(16,185,129,0.12)}
+        .progress-wrap{height:18px;background:rgba(255,255,255,0.03);border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.02)}
+        .progress-bar{height:100%;width:0;background:linear-gradient(90deg,#10b981,#34d399);box-shadow:0 8px 40px rgba(16,185,129,0.18);transition:width .5s ease}
+        @media(max-width:900px){.grid{grid-template-columns:1fr}.metrics{flex-direction:column}}
     </style>
 </head>
 <body>
+    <div class="app">
+        <aside class="sidebar">
+            <div class="brand">MC</div>
+            <nav class="side-nav">
+                <div class="nav-btn active" data-page="dashboard" title="Dashboard"><div class="nav-icon">📊</div></div>
+                <div class="nav-btn" data-page="console" title="Console"><div class="nav-icon">💻</div></div>
+                <div class="nav-btn" data-page="files" title="File Manager"><div class="nav-icon">🗂️</div></div>
+                <div class="nav-btn" data-page="backups" title="Backups"><div class="nav-icon">📦</div></div>
+                <div class="nav-btn" data-page="settings" title="Settings"><div class="nav-icon">⚙️</div></div>
+            </nav>
+            <div class="footer-actions">
+                <div class="logout-small" onclick="location.href='/logout'">Logout</div>
+            </div>
+        </aside>
 
-    <!-- SIDEBAR -->
-    <div class="sidebar">
+        <main class="main">
+            <div class="card">
+                <div class="topbar">
+                    <div>
+                        <div style="font-size:18px;font-weight:800">Server Hub</div>
+                        <div style="font-size:12px;color:var(--muted)">Manage your private instances</div>
+                    </div>
+
+                    <div class="status-badge">
+                        <div id="status" class="status-pill status-offline">● Offline</div>
+                        <div style="text-align:right;font-size:12px;color:var(--muted)">User: <strong id="userDisplay">Admin</strong></div>
+                    </div>
+                </div>
+
+                <div class="metrics">
+                    <div class="metric">
+                        <div class="label">CPU Usage</div>
+                        <div class="value" id="cpuVal">0%</div>
+                    </div>
+                    <div class="metric">
+                        <div class="label">RAM Usage</div>
+                        <div class="value" id="ramVal">0.0GB / 4GB</div>
+                    </div>
+                    <div class="metric">
+                        <div class="label">Players</div>
+                        <div class="value" id="playersVal">0 / 20</div>
+                    </div>
+                </div>
+
+                <div class="grid">
+                    <section>
+                        <div style="display:flex;flex-direction:column;gap:12px">
+                            <div class="card" style="padding:12px">
+                                <div class="quick-actions">
+                                    <div class="quick-left">
+                                        <select id="versionSelect" class="version-select">
+                                            <option>Loading versions...</option>
+                                        </select>
+                                        <button id="installBtn" class="install-btn">Install / Update</button>
+                                    </div>
+                                    <div style="width:45%">
+                                        <div class="progress-wrap"><div id="progressBar" class="progress-bar"></div></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card terminal" id="terminal">
+                                <!-- Log lines will be appended here -->
+                                <div class="log-line log-info">[INFO] Console ready.</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <aside>
+                        <div class="card" style="display:flex;flex-direction:column;gap:12px">
+                            <div style="font-weight:700">Quick Controls</div>
+                            <button onclick="startServer()" style="padding:10px;border-radius:8px;background:var(--accent);border:none;color:#021214;font-weight:800;cursor:pointer">Start Server</button>
+                            <button onclick="stopServer()" style="padding:10px;border-radius:8px;background:#2b3440;border:none;color:#fff;cursor:pointer">Stop Server</button>
+                            <div style="margin-top:8px;font-size:13px;color:var(--muted)">Server Actions</div>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const cpuEl = document.getElementById('cpuVal');
+        const ramEl = document.getElementById('ramVal');
+        const playersEl = document.getElementById('playersVal');
+        const term = document.getElementById('terminal');
+        const progressBar = document.getElementById('progressBar');
+
+        function emitLog(type, text){
+            const div = document.createElement('div');
+            div.className = 'log-line ' + (type==='INSTALL'? 'log-install' : type==='INFO'? 'log-info' : type==='WARN'? 'log-warn' : 'log-error');
+            div.textContent = `[${type}] ${text}`;
+            term.appendChild(div);
+            term.scrollTop = term.scrollHeight;
+        }
+
+        setInterval(()=>{
+            const cpu = Math.floor(Math.random()*60)+5;
+            const used = (Math.random()*3+0.2).toFixed(2);
+            cpuEl.textContent = cpu + '%';
+            ramEl.textContent = used + 'GB / 4GB';
+            playersEl.textContent = Math.floor(Math.random()*6) + ' / 20';
+        },3000);
+
+        async function loadVersions(){
+            try{
+                const r = await fetch('/api/paper-versions');
+                const data = await r.json();
+                const sel = document.getElementById('versionSelect');
+                sel.innerHTML = '';
+                (data.versions||[]).slice(-20).reverse().forEach(v=>{
+                    const o = document.createElement('option'); o.value = 'paper-'+v; o.textContent = 'Paper '+v; sel.appendChild(o);
+                });
+            }catch(e){
+                const sel = document.getElementById('versionSelect'); sel.innerHTML = '<option>Unable to load</option>';
+            }
+        }
+
+        document.getElementById('installBtn').addEventListener('click', async ()=>{
+            const ver = document.getElementById('versionSelect').value;
+            emitLog('INSTALL', 'Starting install for '+ver);
+            statusEl.className = 'status-pill status-install'; statusEl.textContent = '● Installing';
+            progressBar.style.width='10%';
+            let p=10; const t=setInterval(()=>{ p+=Math.floor(Math.random()*18); if(p>=100){ p=100; clearInterval(t); emitLog('INFO','Install complete.'); statusEl.className='status-pill status-online'; statusEl.textContent='● Online'; } progressBar.style.width=p+'%'; emitLog('INSTALL','Downloaded '+p+'%'); },600);
+        });
+
+        function startServer(){ emitLog('INFO','Start requested'); statusEl.className='status-pill status-online'; statusEl.textContent='● Online'; }
+        function stopServer(){ emitLog('WARN','Stop requested'); statusEl.className='status-pill status-offline'; statusEl.textContent='● Offline'; }
+
+        loadVersions();
+        document.getElementById('userDisplay').textContent = localStorage.getItem('username')||'Admin';
+    </script>
+</body>
+</html>
         <div class="sidebar-logo">
             <div class="sidebar-logo-icon">⚙️</div>
             <div class="sidebar-logo-text">MC Panel</div>

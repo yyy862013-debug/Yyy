@@ -13,6 +13,44 @@ const io = new Server(server, {
     cors: { origin: '*' } // OK for private use; restrict in production
 });
 
+// Parse URL-encoded bodies (login form)
+app.use(express.urlencoded({ extended: true }));
+
+// Simple auth helper (cookie-based)
+function isAuthenticated(req){
+    const c = req.headers.cookie || '';
+    return c.split(';').map(s=>s.trim()).some(s=>s === 'panelAuth=1');
+}
+
+// Root and dashboard routing: force login phase first
+app.get('/', (req, res) => {
+    if (!isAuthenticated(req)) return res.redirect('/login.html');
+    return res.redirect('/dashboard.html');
+});
+
+// Protect dashboard.html by redirecting to login when not authenticated
+app.get('/dashboard.html', (req, res, next) => {
+    if (!isAuthenticated(req)) return res.redirect('/login.html');
+    next();
+});
+
+// Login endpoint - simple hardcoded credentials for private use
+app.post('/login', (req, res) => {
+    const { username, password } = req.body || {};
+    if (username === 'admin' && password === 'password') {
+        // set a simple cookie (not secure; fine for private local use)
+        res.setHeader('Set-Cookie', 'panelAuth=1; Path=/');
+        return res.redirect('/dashboard.html');
+    }
+    return res.status(401).send('Invalid credentials');
+});
+
+// Logout clears cookie
+app.get('/logout', (req, res) => {
+    res.setHeader('Set-Cookie', 'panelAuth=; Path=/; Max-Age=0');
+    return res.redirect('/login.html');
+});
+
 // Tell Express to serve our Frontend files
 app.use(express.static(path.join(__dirname, '../frontend/public')));
 
