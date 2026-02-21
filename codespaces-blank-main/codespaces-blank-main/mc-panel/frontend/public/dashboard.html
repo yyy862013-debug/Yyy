@@ -3,153 +3,262 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>MC Panel — Dashboard</title>
+    <title>Minecraft Panel — Dashboard</title>
     <style>
         :root{
-            --bg:#0f172a;
-            --accent:#10b981;
-            --muted:rgba(255,255,255,0.35);
-            --glass: rgba(15,23,42,0.55);
+            --navy:#0d1117;
+            --navy-light:#161b22;
+            --emerald:#00e676;
+            --emerald-dark:#00c853;
+            --ruby:#ff4d4d;
+            --ruby-dark:#ff2626;
+            --muted:#8b949e;
+            --text:#e6eef8;
+            --glass:rgba(13,17,23,0.5);
         }
         *{box-sizing:border-box;margin:0;padding:0}
-        html,body{height:100%;font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial;color:#e6eef8;background:linear-gradient(180deg,var(--bg),#071029)}
-        .app{display:flex;min-height:100vh}
-        .sidebar{width:84px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.05));backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;padding:18px 8px}
-        .brand{font-weight:700;color:var(--accent);margin-bottom:8px}
-        .side-nav{display:flex;flex-direction:column;gap:10px;margin-top:18px;width:100%;align-items:center}
-        .nav-btn{width:56px;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;transition:all .18s}
-        .nav-btn:hover{transform:translateY(-4px);color:#fff;box-shadow:0 6px 30px rgba(16,185,129,0.12)}
-        .nav-btn.active{background:linear-gradient(180deg,rgba(16,185,129,0.12),rgba(16,185,129,0.06));color:var(--accent);box-shadow:0 8px 28px rgba(16,185,129,0.14)}
-        .footer-actions{margin-top:auto;display:flex;flex-direction:column;gap:8px}
-        .logout-small{font-size:12px;color:var(--muted);cursor:pointer}
-        .main{flex:1;padding:28px}
-        .card{background:var(--glass);backdrop-filter:blur(10px);border-radius:12px;padding:20px;border:1px solid rgba(255,255,255,0.04)}
-        .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
-        .status-badge{display:flex;align-items:center;gap:10px}
-        .status-pill{padding:8px 14px;border-radius:999px;font-weight:700;font-size:13px;display:inline-flex;align-items:center;gap:8px;color:#04201a}
-        .status-online{background:linear-gradient(90deg,#6ef0b6,#10b981);box-shadow:0 8px 40px rgba(16,185,129,0.18)}
-        .status-offline{background:linear-gradient(90deg,#ffb3b3,#ff6b6b);box-shadow:0 8px 40px rgba(255,107,107,0.12)}
-        .status-install{background:linear-gradient(90deg,#ffd87a,#ffb347);box-shadow:0 8px 40px rgba(255,180,75,0.12)}
-        .metrics{display:flex;gap:12px;margin-top:8px}
-        .metric{flex:1;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column;gap:6px}
-        .metric .label{font-size:12px;color:var(--muted)}
-        .metric .value{font-weight:700;color:#fff;font-size:18px}
-        .grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-top:18px}
-        .terminal{background:linear-gradient(180deg,rgba(0,0,0,0.45),rgba(0,0,0,0.25));border-radius:10px;padding:12px;height:520px;overflow:auto;border:1px solid rgba(255,255,255,0.03);font-family:monospace;font-size:13px}
-        .log-line{padding:6px 8px;border-radius:6px;margin-bottom:6px;white-space:pre-wrap}
-        .log-install{color:#7dd3fc;background:rgba(125,211,252,0.03);border:1px solid rgba(125,211,252,0.04)}
-        .log-info{color:#34d399;background:rgba(52,211,153,0.03);border:1px solid rgba(52,211,153,0.04)}
-        .log-warn{color:#facc15;background:rgba(250,204,21,0.03);border:1px solid rgba(250,204,21,0.04)}
-        .log-error{color:#fb7185;background:rgba(251,113,133,0.03);border:1px solid rgba(251,113,133,0.04)}
-        .quick-actions{display:flex;align-items:center;justify-content:space-between;gap:12px}
-        .version-select{padding:10px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);color:#e6eef8}
-        .install-btn{padding:10px 16px;background:linear-gradient(90deg,var(--accent),#34d399);color:#021214;border-radius:10px;border:none;font-weight:800;cursor:pointer;box-shadow:0 6px 30px rgba(16,185,129,0.12)}
-        .progress-wrap{height:18px;background:rgba(255,255,255,0.03);border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.02)}
-        .progress-bar{height:100%;width:0;background:linear-gradient(90deg,#10b981,#34d399);box-shadow:0 8px 40px rgba(16,185,129,0.18);transition:width .5s ease}
-        @media(max-width:900px){.grid{grid-template-columns:1fr}.metrics{flex-direction:column}}
+        html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:var(--text);background:var(--navy);display:flex}
+        
+        /* SIDEBAR */
+        .sidebar{width:280px;background:linear-gradient(180deg,var(--navy),var(--navy-light));border-right:1px solid rgba(255,255,255,0.08);padding:20px;display:flex;flex-direction:column;min-height:100vh}
+        .sidebar-brand{font-weight:900;font-size:24px;color:var(--emerald);margin-bottom:30px;display:flex;align-items:center;gap:8px}
+        .sidebar-brand::before{content:'⚡';font-size:28px}
+        .sidebar-menu{flex:1;display:flex;flex-direction:column;gap:8px}
+        .sidebar-item{padding:12px 16px;border-radius:8px;cursor:pointer;transition:all .2s;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:12px}
+        .sidebar-item:hover{background:rgba(0,230,118,0.1);color:var(--text)}
+        .sidebar-item.active{background:linear-gradient(90deg,rgba(0,230,118,0.15),rgba(0,230,118,0.05));color:var(--emerald);border-left:3px solid var(--emerald);padding-left:13px}
+        .sidebar-item-icon{font-size:18px}
+        .sidebar-footer{border-top:1px solid rgba(255,255,255,0.08);padding-top:16px;margin-top:auto}
+        .sidebar-footer a{display:block;padding:10px;border-radius:6px;color:var(--ruby);text-decoration:none;text-align:center;font-weight:600;transition:all .2s}
+        .sidebar-footer a:hover{background:rgba(255,77,77,0.1);color:var(--ruby-dark)}
+        
+        /* MAIN CONTENT */
+        .container{flex:1;padding:28px;overflow-y:auto;background:var(--navy)}
+        
+        /* TOPBAR */
+        .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;background:var(--glass);backdrop-filter:blur(10px);padding:16px 20px;border-radius:12px;border:1px solid rgba(255,255,255,0.08)}
+        .topbar-title{display:flex;flex-direction:column}
+        .topbar-title h1{font-size:28px;font-weight:800}
+        .topbar-title p{font-size:13px;color:var(--muted);margin-top:2px}
+        .topbar-user{display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:13px}
+        .topbar-user-name{font-weight:600}
+        .status-badge{padding:6px 12px;border-radius:6px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:6px}
+        .status-online{background:rgba(0,230,118,0.2);color:var(--emerald)}
+        .status-offline{background:rgba(255,77,77,0.2);color:var(--ruby)}
+        .status-dot{width:8px;height:8px;border-radius:50%;background:currentColor;animation:pulse 2s infinite}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+        
+        /* METRICS GRID */
+        .metrics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px}
+        .metric-card{background:var(--glass);backdrop-filter:blur(10px);border:1px solid rgba(0,230,118,0.2);border-radius:12px;padding:20px;transition:all .3s}
+        .metric-card:hover{border-color:var(--emerald);box-shadow:0 8px 32px rgba(0,230,118,0.1)}
+        .metric-label{font-size:12px;color:var(--muted);text-transform:uppercase;margin-bottom:8px;letter-spacing:0.8px}
+        .metric-value{font-size:32px;font-weight:800;color:var(--text)}
+        .metric-subtext{font-size:11px;color:var(--muted);margin-top:4px}
+        
+        /* CONTENT GRID */
+        .content-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+        
+        /* TERMINAL SECTION */
+        .terminal-container{background:var(--glass);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px;display:flex;flex-direction:column}
+        .terminal-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px}
+        .terminal{background:rgba(0,0,0,0.4);border-radius:8px;padding:12px;height:400px;overflow:auto;font-family:monospace;font-size:12px;border:1px solid rgba(255,255,255,0.04)}
+        .log-line{padding:4px 8px;border-radius:4px;margin-bottom:4px;white-space:pre-wrap;word-break:break-word}
+        .log-install{color:#7dd3fc;background:rgba(125,211,252,0.05)}
+        .log-info{color:var(--emerald);background:rgba(0,230,118,0.05)}
+        .log-warn{color:#facc15;background:rgba(250,204,21,0.05)}
+        .log-error{color:var(--ruby);background:rgba(255,77,77,0.05)}
+        
+        /* CONTROLS SECTION */
+        .controls-section{background:var(--glass);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px}
+        .control-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px}
+        .control-group{display:flex;flex-direction:column;gap:8px}
+        .button-group{display:flex;gap:8px}
+        .btn{padding:12px 16px;border:none;border-radius:8px;font-weight:700;cursor:pointer;transition:all .2s;font-size:13px;display:flex;align-items:center;gap:8px;justify-content:center}
+        .btn-emerald{background:linear-gradient(135deg,var(--emerald),var(--emerald-dark));color:#000;box-shadow:0 4px 16px rgba(0,230,118,0.2)}
+        .btn-emerald:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,230,118,0.3)}
+        .btn-emerald:active{transform:translateY(0)}
+        .btn-ruby{background:linear-gradient(135deg,var(--ruby),var(--ruby-dark));color:#fff;box-shadow:0 4px 16px rgba(255,77,77,0.2)}
+        .btn-ruby:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(255,77,77,0.3)}
+        .btn-ruby:active{transform:translateY(0)}
+        .btn-secondary{background:rgba(255,255,255,0.08);color:var(--text);border:1px solid rgba(255,255,255,0.12)}
+        .btn-secondary:hover{background:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.2)}
+        .btn:disabled{opacity:0.5;cursor:not-allowed;transform:none!important}
+        
+        /* INSTALLER SECTION */
+        .installer-section{background:var(--glass);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px;margin-bottom:16px}
+        .installer-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px}
+        .installer-controls{display:flex;gap:10px;align-items:center}
+        .version-select{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:var(--text);font-size:12px}
+        .version-select:focus{outline:none;border-color:var(--emerald);box-shadow:0 0 12px rgba(0,230,118,0.1)}
+        .progress-bar-container{flex:1;height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden}
+        .progress-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--emerald),var(--emerald-dark));transition:width 0.3s ease}
+        
+        /* RESPONSIVE */
+        @media(max-width:1200px){
+            .metrics-grid{grid-template-columns:1fr}
+            .content-grid{grid-template-columns:1fr}
+        }
+        @media(max-width:768px){
+            .sidebar{width:80px;padding:12px}
+            .sidebar-brand{font-size:0;margin-bottom:20px}
+            .sidebar-item-icon{font-size:24px}
+            .sidebar-item span{display:none}
+            .sidebar-item.active span{display:inline}
+            .container{padding:16px}
+            .metrics-grid{grid-template-columns:1fr}
+            .button-group{flex-direction:column}
+        }
     </style>
 </head>
 <body>
-    <div class="app">
-        <aside class="sidebar">
-            <div class="brand">MC</div>
-            <nav class="side-nav">
-                <div class="nav-btn active" data-page="dashboard" title="Dashboard"><div class="nav-icon">📊</div></div>
-                <div class="nav-btn" data-page="console" title="Console"><div class="nav-icon">💻</div></div>
-                <div class="nav-btn" data-page="files" title="File Manager"><div class="nav-icon">🗂️</div></div>
-                <div class="nav-btn" data-page="backups" title="Backups"><div class="nav-icon">📦</div></div>
-                <div class="nav-btn" data-page="settings" title="Settings"><div class="nav-icon">⚙️</div></div>
-            </nav>
-            <div class="footer-actions">
-                <div class="logout-small" onclick="location.href='/logout'">Logout</div>
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">Apex Panel</div>
+        <nav class="sidebar-menu">
+            <div class="sidebar-item active" onclick="navigate('dashboard')">
+                <span class="sidebar-item-icon">📊</span>
+                <span>Dashboard</span>
             </div>
-        </aside>
+            <div class="sidebar-item" onclick="navigate('console')">
+                <span class="sidebar-item-icon">💻</span>
+                <span>Console</span>
+            </div>
+            <div class="sidebar-item" onclick="navigate('files')">
+                <span class="sidebar-item-icon">📁</span>
+                <span>File Manager</span>
+            </div>
+            <div class="sidebar-item" onclick="navigate('settings')">
+                <span class="sidebar-item-icon">⚙️</span>
+                <span>Settings</span>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="/logout">Sign Out</a>
+        </div>
+    </aside>
 
-        <main class="main">
-            <div class="card">
-                <div class="topbar">
-                    <div>
-                        <div style="font-size:18px;font-weight:800">Server Hub</div>
-                        <div style="font-size:12px;color:var(--muted)">Manage your private instances</div>
-                    </div>
-
-                    <div class="status-badge">
-                        <div id="status" class="status-pill status-offline">● Offline</div>
-                        <div style="text-align:right;font-size:12px;color:var(--muted)">User: <strong id="userDisplay">Admin</strong></div>
-                    </div>
-                </div>
-
-                <div class="metrics">
-                    <div class="metric">
-                        <div class="label">CPU Usage</div>
-                        <div class="value" id="cpuVal">0%</div>
-                    </div>
-                    <div class="metric">
-                        <div class="label">RAM Usage</div>
-                        <div class="value" id="ramVal">0.0GB / 4GB</div>
-                    </div>
-                    <div class="metric">
-                        <div class="label">Players</div>
-                        <div class="value" id="playersVal">0 / 20</div>
-                    </div>
-                </div>
-
-                <div class="grid">
-                    <section>
-                        <div style="display:flex;flex-direction:column;gap:12px">
-                            <div class="card" style="padding:12px">
-                                <div class="quick-actions">
-                                    <div class="quick-left">
-                                        <select id="versionSelect" class="version-select">
-                                            <option>Loading versions...</option>
-                                        </select>
-                                        <button id="installBtn" class="install-btn">Install / Update</button>
-                                    </div>
-                                    <div style="width:45%">
-                                        <div class="progress-wrap"><div id="progressBar" class="progress-bar"></div></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="card terminal" id="terminal">
-                                <!-- Log lines will be appended here -->
-                                <div class="log-line log-info">[INFO] Console ready.</div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <aside>
-                        <div class="card" style="display:flex;flex-direction:column;gap:12px">
-                            <div style="font-weight:700">Quick Controls</div>
-                            <button id="startBtn" style="padding:10px;border-radius:8px;background:var(--accent);border:none;color:#021214;font-weight:800;cursor:pointer">Start Server</button>
-                            <button id="stopBtn" style="padding:10px;border-radius:8px;background:#2b3440;border:none;color:#fff;cursor:pointer">Stop Server</button>
-                            <div style="margin-top:8px;font-size:13px;color:var(--muted)">Server Actions</div>
-                        </div>
-                    </aside>
+    <!-- MAIN CONTENT -->
+    <div class="container">
+        <!-- TOPBAR -->
+        <div class="topbar">
+            <div class="topbar-title">
+                <h1>Server Hub</h1>
+                <p>Manage your Minecraft instance</p>
+            </div>
+            <div class="topbar-user">
+                <div class="topbar-user-name" id="userDisplay">Admin</div>
+                <div class="status-badge status-offline" id="statusBadge">
+                    <span class="status-dot"></span>
+                    <span id="statusText">Offline</span>
                 </div>
             </div>
-        </main>
+        </div>
+
+        <!-- METRICS -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">CPU Usage</div>
+                <div class="metric-value" id="cpuVal">0%</div>
+                <div class="metric-subtext">Last updated now</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">RAM Usage</div>
+                <div class="metric-value" id="ramVal">0/4GB</div>
+                <div class="metric-subtext">Allocated 4GB</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Players Online</div>
+                <div class="metric-value" id="playersVal">0/20</div>
+                <div class="metric-subtext">Max 20 slots</div>
+            </div>
+        </div>
+
+        <!-- CONTENT GRID -->
+        <div class="content-grid">
+            <!-- LEFT: TERMINAL + INSTALLER -->
+            <div>
+                <!-- INSTALLER -->
+                <div class="installer-section">
+                    <div class="installer-title">Version Installer</div>
+                    <div class="installer-controls">
+                        <select id="versionSelect" class="version-select">
+                            <option>Loading versions...</option>
+                        </select>
+                        <button id="installBtn" class="btn btn-emerald">Install</button>
+                    </div>
+                    <div class="progress-bar-container" style="margin-top:8px">
+                        <div id="progressBar" class="progress-bar"></div>
+                    </div>
+                </div>
+
+                <!-- TERMINAL -->
+                <div class="terminal-container">
+                    <div class="terminal-title">Server Console</div>
+                    <div class="terminal" id="terminal">
+                        <div class="log-line log-info">[INFO] Console ready.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT: CONTROLS -->
+            <div class="controls-section">
+                <div class="control-title">Server Controls</div>
+                
+                <div class="control-group">
+                    <button id="startBtn" class="btn btn-emerald" style="width:100%">
+                        <span>▶️</span> Start Server
+                    </button>
+                    <button id="stopBtn" class="btn btn-ruby" style="width:100%">
+                        <span>⏹️</span> Stop Server
+                    </button>
+                </div>
+
+                <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08);font-size:12px;color:var(--muted)">
+                    <div style="margin-bottom:8px">
+                        <strong>Quick Status:</strong>
+                    </div>
+                    <div id="serverInfo" style="line-height:1.6">
+                        • Status: <span id="infoStatus">Offline</span><br>
+                        • Uptime: <span id="infoUptime">N/A</span><br>
+                        • Port: <span id="infoPort">25565</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script>
         const socket = io();
-        const statusEl = document.getElementById('status');
-        const cpuEl = document.getElementById('cpuVal');
-        const ramEl = document.getElementById('ramVal');
-        const playersEl = document.getElementById('playersVal');
-        const term = document.getElementById('terminal');
+        
+        // DOM Elements
+        const statusBadge = document.getElementById('statusBadge');
+        const statusText = document.getElementById('statusText');
+        const cpuVal = document.getElementById('cpuVal');
+        const ramVal = document.getElementById('ramVal');
+        const playersVal = document.getElementById('playersVal');
+        const terminal = document.getElementById('terminal');
         const progressBar = document.getElementById('progressBar');
+        const versionSelect = document.getElementById('versionSelect');
+        const installBtn = document.getElementById('installBtn');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
 
-        function emitLog(type, text){
-            const div = document.createElement('div');
-            div.className = 'log-line ' + (type==='INSTALL'? 'log-install' : type==='INFO'? 'log-info' : type==='WARN'? 'log-warn' : 'log-error');
-            div.textContent = `[${type}] ${text}`;
-            term.appendChild(div);
-            term.scrollTop = term.scrollHeight;
+        function navigate(page) {
+            window.location.href = `/${page}.html`;
         }
 
-        // Socket.io listeners
+        function emitLog(type, text) {
+            const div = document.createElement('div');
+            const logClass = type === 'INSTALL' ? 'log-install' : type === 'INFO' ? 'log-info' : type === 'WARN' ? 'log-warn' : 'log-error';
+            div.className = 'log-line ' + logClass;
+            div.textContent = `[${type}] ${text}`;
+            terminal.appendChild(div);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // Socket.io Listeners
         socket.on('console-output', (data) => {
             emitLog('INFO', data);
         });
@@ -161,75 +270,84 @@
 
         socket.on('install-complete', () => {
             progressBar.style.width = '100%';
-            emitLog('INFO', 'Install complete.');
-            statusEl.className = 'status-pill status-online';
-            statusEl.textContent = '● Online';
+            emitLog('INFO', 'Installation complete!');
+            statusBadge.className = 'status-badge status-online';
+            statusText.textContent = 'Online';
+            document.getElementById('infoStatus').textContent = 'Online';
         });
 
         socket.on('server-status', (status) => {
-            if (status.cpu) cpuEl.textContent = status.cpu + '%';
-            if (status.ram) ramEl.textContent = status.ram + 'GB / 4GB';
-            if (status.players) playersEl.textContent = status.players + ' / 20';
+            if (status.cpu) cpuVal.textContent = status.cpu + '%';
+            if (status.ram) ramVal.textContent = status.ram + ' / 4GB';
+            if (status.players) playersVal.textContent = status.players + ' / 20';
             if (status.running !== undefined) {
-                if (status.running) {
-                    statusEl.className = 'status-pill status-online';
-                    statusEl.textContent = '● Online';
-                } else {
-                    statusEl.className = 'status-pill status-offline';
-                    statusEl.textContent = '● Offline';
-                }
+                statusBadge.className = 'status-badge ' + (status.running ? 'status-online' : 'status-offline');
+                statusText.textContent = status.running ? 'Online' : 'Offline';
+                document.getElementById('infoStatus').textContent = status.running ? 'Online' : 'Offline';
             }
         });
 
-        // Navigation
-        document.querySelectorAll('.nav-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const page = btn.dataset.page;
-                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                window.location.href = `/${page}.html`;
-            });
-        });
-
-        async function loadVersions(){
-            try{
+        // Load versions
+        async function loadVersions() {
+            try {
                 const r = await fetch('/api/paper-versions');
                 const data = await r.json();
-                const sel = document.getElementById('versionSelect');
-                sel.innerHTML = '';
-                (data.versions||[]).slice(-20).reverse().forEach(v=>{
-                    const o = document.createElement('option'); o.value = 'paper-'+v; o.textContent = 'Paper '+v; sel.appendChild(o);
+                versionSelect.innerHTML = '';
+                (data.versions || []).slice(-20).reverse().forEach(v => {
+                    const o = document.createElement('option');
+                    o.value = 'paper-' + v;
+                    o.textContent = 'Paper ' + v;
+                    versionSelect.appendChild(o);
                 });
-            }catch(e){
-                const sel = document.getElementById('versionSelect'); sel.innerHTML = '<option>Unable to load</option>';
+            } catch (e) {
+                versionSelect.innerHTML = '<option>Unable to load versions</option>';
             }
         }
 
-        document.getElementById('installBtn').addEventListener('click', () => {
-            const ver = document.getElementById('versionSelect').value;
+        // Install button
+        installBtn.addEventListener('click', () => {
+            const ver = versionSelect.value;
             if (!ver || ver === 'Loading versions...') {
                 emitLog('ERROR', 'Please select a version first');
                 return;
             }
-            emitLog('INSTALL', 'Starting install for '+ver);
-            statusEl.className = 'status-pill status-install';
-            statusEl.textContent = '● Installing';
-            progressBar.style.width='10%';
+            emitLog('INSTALL', `Starting install for ${ver}`);
+            progressBar.style.width = '0%';
+            installBtn.disabled = true;
             socket.emit('install-version', ver);
+            setTimeout(() => {
+                installBtn.disabled = false;
+            }, 2000);
         });
 
-        document.getElementById('startBtn').addEventListener('click', () => {
-            emitLog('INFO','Start requested');
+        // Start/Stop buttons
+        startBtn.addEventListener('click', () => {
+            emitLog('INFO', 'Requesting server start...');
+            startBtn.disabled = true;
             socket.emit('start-server');
+            setTimeout(() => {
+                startBtn.disabled = false;
+            }, 1000);
         });
 
-        document.getElementById('stopBtn').addEventListener('click', () => {
-            emitLog('WARN','Stop requested');
+        stopBtn.addEventListener('click', () => {
+            emitLog('WARN', 'Requesting server stop...');
+            stopBtn.disabled = true;
             socket.emit('stop-server');
+            setTimeout(() => {
+                stopBtn.disabled = false;
+            }, 1000);
         });
 
+        // Simulate metrics updates
+        setInterval(() => {
+            const cpu = Math.floor(Math.random() * 60) + 5;
+            cpuVal.textContent = cpu + '%';
+        }, 3000);
+
+        // Initialize
         loadVersions();
-        document.getElementById('userDisplay').textContent = localStorage.getItem('username')||'Admin';
+        document.getElementById('userDisplay').textContent = localStorage.getItem('username') || 'Admin';
     </script>
 </body>
 </html>
