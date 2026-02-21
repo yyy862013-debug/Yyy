@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MC Panel - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            min-height: 100vh;
+            color: #ffffff;
+            display: flex;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 250px;
+            background: rgba(15, 20, 40, 0.9);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 30px 0;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+        }
+
+        .sidebar-logo {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 0 20px;
+        }
+
+        .sidebar-logo-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .sidebar-logo-text {
+            font-size: 18px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+        }
+
+        .nav-item {
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #aaa;
+            font-size: 14px;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: rgba(0, 255, 136, 0.1);
+            color: #00ff88;
+            border-left-color: #00ff88;
+        }
+
+        .nav-item.active {
+            background: rgba(0, 255, 136, 0.15);
+            color: #00ff88;
+            border-left-color: #00ff88;
+        }
+
+        .nav-icon {
+            font-size: 18px;
+            min-width: 20px;
+        }
+
+        .sidebar-footer {
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: auto;
+        }
+
+        .logout-btn {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 100, 100, 0.2);
+            border-color: rgba(255, 100, 100, 0.4);
+            color: #ff6464;
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            flex: 1;
+            margin-left: 250px;
+            padding: 40px;
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header-title h1 {
+            font-size: 32px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .header-title p {
+            font-size: 13px;
+            color: #888;
+            margin-top: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00ff88, #00cc66);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #000;
+        }
+
+        .user-name {
+            font-size: 14px;
+            color: #fff;
+        }
+
+        /* SERVERS GRID */
+        .servers-section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .servers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        /* SERVER CARD */
+        .server-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 12px;
+            padding: 24px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .server-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #00ff88, #00cc66);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .server-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(0, 255, 136, 0.5);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 40px rgba(0, 255, 136, 0.1);
+        }
+
+        .server-card:hover::before {
+            opacity: 1;
+        }
+
+        .server-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 20px;
+        }
+
+        .server-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .server-icon {
+            font-size: 32px;
+        }
+
+        .server-status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 10px;
+        }
+
+        .status-online {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            border: 1px solid rgba(0, 255, 136, 0.4);
+        }
+
+        .status-offline {
+            background: rgba(255, 100, 100, 0.2);
+            color: #ff6464;
+            border: 1px solid rgba(255, 100, 100, 0.4);
+        }
+
+        .server-info {
+            margin: 20px 0;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 13px;
+        }
+
+        .info-label {
+            color: #aaa;
+        }
+
+        .info-value {
+            color: #00ff88;
+            font-weight: bold;
+            font-family: monospace;
+        }
+
+        .ram-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .ram-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #00cc66);
+            transition: width 0.3s ease;
+            border-radius: 3px;
+        }
+
+        .server-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-manage {
+            background: linear-gradient(135deg, #00ff88, #00cc66);
+            color: #000;
+        }
+
+        .btn-manage:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* EMPTY STATE */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .empty-text {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .empty-subtext {
+            font-size: 13px;
+            color: #666;
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 200px;
+            }
+
+            .main-content {
+                margin-left: 200px;
+                padding: 20px;
+            }
+
+            .servers-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                width: 200px;
+                height: auto;
+                z-index: 1000;
+                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="sidebar-logo">
+            <div class="sidebar-logo-icon">⚙️</div>
+            <div class="sidebar-logo-text">MC Panel</div>
+        </div>
+
+        <div class="sidebar-nav">
+            <div class="nav-item active" onclick="navigateTo('dashboard')">
+                <span class="nav-icon">📊</span>
+                <span>Dashboard</span>
+            </div>
+            <div class="nav-item" onclick="navigateTo('settings')">
+                <span class="nav-icon">⚙️</span>
+                <span>Global Settings</span>
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <button class="logout-btn" onclick="logout()">🚪 Log Out</button>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        <div class="header">
+            <div class="header-title">
+                <h1>Server Hub</h1>
+                <p>Select a server to manage</p>
+            </div>
+            <div class="user-info">
+                <div class="user-avatar">A</div>
+                <div class="user-name" id="username">Admin</div>
+            </div>
+        </div>
+
+        <!-- SERVERS SECTION -->
+        <div class="servers-section">
+            <div class="section-title">
+                <span>🎮</span>
+                <span>Your Servers</span>
+            </div>
+            <div class="servers-grid" id="serversList">
+                <!-- SERVER CARDS WILL BE LOADED HERE -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check authentication
+        if (!localStorage.getItem('isLoggedIn')) {
+            window.location.href = '/login.html';
+        }
+
+        // Sample server data
+        const servers = [
+            {
+                id: 1,
+                name: 'Vanilla Survival',
+                icon: '🌍',
+                status: 'online',
+                players: '2/20',
+                ram: 75,
+                maxRam: 2,
+                type: 'Vanilla'
+            },
+            {
+                id: 2,
+                name: 'Creative Test',
+                icon: '🏗️',
+                status: 'offline',
+                players: '0/0',
+                ram: 0,
+                maxRam: 2,
+                type: 'Creative'
+            },
+            {
+                id: 3,
+                name: 'Modded Adventure',
+                icon: '⚡',
+                status: 'online',
+                players: '5/30',
+                ram: 1.2,
+                maxRam: 3,
+                type: 'Modded'
+            }
+        ];
+
+        // Render servers
+        function renderServers() {
+            const serversList = document.getElementById('serversList');
+            
+            if (servers.length === 0) {
+                serversList.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <div class="empty-icon">📭</div>
+                        <div class="empty-text">No Servers Configured</div>
+                        <div class="empty-subtext">Create your first server to get started</div>
+                    </div>
+                `;
+                return;
+            }
+
+            serversList.innerHTML = servers.map(server => `
+                <div class="server-card">
+                    <div class="server-header">
+                        <div>
+                            <div class="server-name">${server.name}</div>
+                            <div class="server-status-badge status-${server.status}">
+                                ${server.status === 'online' ? '● Online' : '● Offline'}
+                            </div>
+                        </div>
+                        <div class="server-icon">${server.icon}</div>
+                    </div>
+
+                    <div class="server-info">
+                        <div class="info-item">
+                            <span class="info-label">Type</span>
+                            <span class="info-value">${server.type}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Players</span>
+                            <span class="info-value">${server.players}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">RAM Usage</span>
+                            <span class="info-value">${server.ram}GB / ${server.maxRam}GB</span>
+                        </div>
+                        <div class="ram-bar">
+                            <div class="ram-fill" style="width: ${(server.ram / server.maxRam) * 100}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="server-actions">
+                        <button class="btn btn-manage" onclick="manageServer(${server.id})">Manage →</button>
+                        <button class="btn btn-secondary" onclick="viewDetails(${server.id})">Info</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Navigation
+        function navigateTo(page) {
+            console.log(`Navigating to ${page}`);
+            // Implement navigation logic here
+        }
+
+        function manageServer(id) {
+            const server = servers.find(s => s.id === id);
+            console.log(`Managing server: ${server.name}`);
+            window.location.href = `/server.html?id=${id}`;
+        }
+
+        function viewDetails(id) {
+            const server = servers.find(s => s.id === id);
+            console.log(`Viewing details for: ${server.name}`);
+            // Show modal or navigate to detail page
+        }
+
+        function logout() {
+            localStorage.removeItem('isLoggedIn');
+            window.location.href = '/login.html';
+        }
+
+        // Initialize
+        renderServers();
+
+        // Update username display
+        const username = localStorage.getItem('username') || 'Admin';
+        document.getElementById('username').textContent = username;
+
+        // Simulate real-time updates (optional)
+        setInterval(() => {
+            // In a real app, fetch server status from backend
+            // For now, just update RAM randomly to show it works
+            servers.forEach(server => {
+                if (server.status === 'online') {
+                    server.ram = (Math.random() * server.maxRam).toFixed(2);
+                }
+            });
+            // renderServers(); // Uncomment to see live updates
+        }, 5000);
+    </script>
+
+</body>
+</html>

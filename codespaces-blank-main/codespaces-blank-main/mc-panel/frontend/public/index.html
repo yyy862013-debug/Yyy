@@ -63,29 +63,55 @@
     <div class="console" id="consoleBox">
         <div class="log-line">Waiting for server logs...</div>
     </div>
+
+    <h3>Commands</h3>
+    <div style="display: flex; gap: 10px;">
+        <input type="text" id="cmdInput" placeholder="say Hello world!" style="flex: 1; padding: 10px; border-radius: 5px; border: 1px solid #333; background-color: #1e1e1e; color: #fff;">
+        <button id="sendBtn">📤 Send Command</button>
+    </div>
+
+    <div class="header" style="margin-top: 20px; justify-content: flex-end;">
+        <button id="stopBtn" style="background-color: #ff5252;">⏹ Stop Server</button>
+    </div>
 </div>
 
 <script>
-    // Connect the browser to the Node.js backend
-    const socket = io();
-    const consoleBox = document.getElementById('consoleBox');
-    const startBtn = document.getElementById('startBtn');
+const socket = io();
 
-    // Tell the backend to start the server when the button is clicked
-    startBtn.addEventListener('click', () => {
-        socket.emit('start-server');
-    });
+// UI Elements
+const consoleBox = document.getElementById('consoleBox');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn'); // Make sure you have this button!
+const cmdInput = document.getElementById('cmdInput');
+const sendBtn = document.getElementById('sendBtn');
 
-    // Listen for text coming FROM the Minecraft server
-    socket.on('console-output', (text) => {
-        const log = document.createElement('div');
-        log.className = 'log-line';
-        log.innerText = text;
-        consoleBox.appendChild(log);
-        
-        // Auto-scroll to the bottom
-        consoleBox.scrollTop = consoleBox.scrollHeight;
-    });
+// START the server
+startBtn.addEventListener('click', () => {
+    socket.emit('start-server');
+});
+
+// STOP the server (The new simplified API)
+stopBtn.addEventListener('click', () => {
+    socket.emit('stop-server');
+});
+
+// SEND COMMAND (The new command support)
+sendBtn.addEventListener('click', () => {
+    const cmd = cmdInput.value;
+    if (cmd) {
+        socket.emit('send-command', cmd);
+        cmdInput.value = ''; // Clear input after sending
+    }
+});
+
+// LIVE CONSOLE
+socket.on('console-output', (text) => {
+    const log = document.createElement('div');
+    log.className = 'log-line';
+    log.innerText = text;
+    consoleBox.appendChild(log);
+    consoleBox.scrollTop = consoleBox.scrollHeight;
+});
 </script>
 
 </body>

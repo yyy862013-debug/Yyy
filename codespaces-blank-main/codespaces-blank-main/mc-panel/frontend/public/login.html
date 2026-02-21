@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MC Panel - Login</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            min-height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* LEFT SIDE - 3D Cave Render (Placeholder with gradient) */
+        .cave-side {
+            flex: 1;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d1b4e 50%, #1a3a3a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cave-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Glowing ore effect */
+        .ore {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(8px);
+        }
+
+        .ore-emerald {
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, #00ff88, #00cc66);
+            box-shadow: 0 0 40px #00ff88, 0 0 80px #00cc66;
+            top: 40px;
+            left: 60px;
+        }
+
+        .ore-diamond {
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle, #00ccff, #0088ff);
+            box-shadow: 0 0 35px #00ccff, 0 0 70px #0088ff;
+            bottom: 60px;
+            right: 50px;
+        }
+
+        .ore-redstone {
+            width: 45px;
+            height: 45px;
+            background: radial-gradient(circle, #ff4444, #cc0000);
+            box-shadow: 0 0 30px #ff4444, 0 0 60px #cc0000;
+            top: 120px;
+            right: 40px;
+        }
+
+        .ore-gold {
+            width: 55px;
+            height: 55px;
+            background: radial-gradient(circle, #ffdd00, #ffaa00);
+            box-shadow: 0 0 35px #ffdd00, 0 0 70px #ffaa00;
+            bottom: 80px;
+            left: 30px;
+        }
+
+        .cave-text {
+            color: #00ff88;
+            font-size: 18px;
+            text-align: center;
+            position: relative;
+            z-index: 10;
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
+            font-weight: bold;
+        }
+
+        /* RIGHT SIDE - Login Form */
+        .login-side {
+            flex: 1;
+            background: rgba(20, 25, 50, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-logo {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo-icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+        }
+
+        .logo-text {
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffffff;
+            letter-spacing: 2px;
+        }
+
+        .logo-subtext {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]::placeholder,
+        input[type="password"]::placeholder {
+            color: #666;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(0, 255, 136, 0.4);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.1);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 30px;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 50px rgba(0, 255, 136, 0.5);
+            background: linear-gradient(135deg, #00ff99 0%, #00dd77 100%);
+        }
+
+        .login-btn:active {
+            transform: translateY(0);
+        }
+
+        .error-message {
+            color: #ff5252;
+            font-size: 12px;
+            margin-top: 8px;
+            display: none;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #666;
+            user-select: none;
+            font-size: 16px;
+        }
+
+        .form-group.password-group {
+            position: relative;
+        }
+
+        @media (max-width: 1024px) {
+            .cave-side {
+                display: none;
+            }
+            
+            .login-side {
+                flex: 1;
+            }
+
+            body {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LEFT SIDE - 3D CAVE WITH GLOWING ORES -->
+    <div class="cave-side">
+        <div class="cave-container">
+            <div class="ore ore-emerald"></div>
+            <div class="ore ore-diamond"></div>
+            <div class="ore ore-redstone"></div>
+            <div class="ore ore-gold"></div>
+            <div class="cave-text">⛏ Minecraft Server Panel</div>
+        </div>
+    </div>
+
+    <!-- RIGHT SIDE - LOGIN FORM -->
+    <div class="login-side">
+        <div class="login-container">
+            <div class="login-logo">
+                <div class="logo-icon">⚙️</div>
+                <div class="logo-text">MC Panel</div>
+                <div class="logo-subtext">Private Server Hub</div>
+            </div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        placeholder="Enter username"
+                        autocomplete="username"
+                        required
+                    >
+                    <div class="error-message" id="usernameError"></div>
+                </div>
+
+                <div class="form-group password-group">
+                    <label for="password">Password</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        placeholder="Enter password"
+                        autocomplete="current-password"
+                        required
+                    >
+                    <span class="password-toggle" onclick="togglePassword()">👁️</span>
+                    <div class="error-message" id="passwordError"></div>
+                </div>
+
+                <button type="submit" class="login-btn">
+                    Enter →
+                </button>
+
+                <div class="error-message" id="generalError"></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Toggle password visibility
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggle = event.target;
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggle.textContent = '👁️‍🗨️';
+            } else {
+                passwordInput.type = 'password';
+                toggle.textContent = '👁️';
+            }
+        }
+
+        // Handle login
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            // Clear errors
+            document.getElementById('usernameError').style.display = 'none';
+            document.getElementById('passwordError').style.display = 'none';
+            document.getElementById('generalError').style.display = 'none';
+
+            // Basic validation
+            if (!username) {
+                document.getElementById('usernameError').textContent = 'Username required';
+                document.getElementById('usernameError').style.display = 'block';
+                return;
+            }
+
+            if (!password) {
+                document.getElementById('passwordError').textContent = 'Password required';
+                document.getElementById('passwordError').style.display = 'block';
+                return;
+            }
+
+            // For private use, we can hardcode credentials or use a simple check
+            // This is a placeholder - implement proper authentication in backend
+            if (username === 'admin' && password === 'password') {
+                localStorage.setItem('isLoggedIn', 'true');
+                window.location.href = '/dashboard.html';
+            } else {
+                document.getElementById('generalError').textContent = 'Invalid credentials';
+                document.getElementById('generalError').style.display = 'block';
+            }
+        });
+
+        // Check if already logged in
+        if (localStorage.getItem('isLoggedIn')) {
+            window.location.href = '/dashboard.html';
+        }
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MC Panel - Server Cockpit</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            min-height: 100vh;
+            color: #ffffff;
+        }
+
+        .top-bar {
+            background: rgba(15, 20, 40, 0.95);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .server-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 12px;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .server-name {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-online {
+            background: #00ff88;
+            box-shadow: 0 0 10px #00ff88;
+        }
+
+        .status-offline {
+            background: #ff6464;
+            box-shadow: 0 0 10px #ff6464;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .main-container {
+            padding: 40px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* CONTROL PANEL */
+        .control-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+
+        .control-btn {
+            padding: 20px;
+            border: 2px solid;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .control-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            transition: left 0.3s ease;
+            z-index: -1;
+        }
+
+        .control-btn:hover::before {
+            left: 0;
+        }
+
+        .btn-start {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+
+        .btn-start::before {
+            background: linear-gradient(90deg, #00ff88, #00cc66);
+        }
+
+        .btn-start:hover {
+            color: #000;
+            transform: scale(1.02);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+        }
+
+        .btn-stop {
+            background: rgba(255, 100, 100, 0.1);
+            border-color: #ff6464;
+            color: #ff6464;
+        }
+
+        .btn-stop::before {
+            background: linear-gradient(90deg, #ff6464, #ff4444);
+        }
+
+        .btn-stop:hover {
+            color: #fff;
+            transform: scale(1.02);
+            box-shadow: 0 0 30px rgba(255, 100, 100, 0.4);
+        }
+
+        .btn-restart {
+            background: rgba(255, 180, 0, 0.1);
+            border-color: #ffb400;
+            color: #ffb400;
+        }
+
+        .btn-restart::before {
+            background: linear-gradient(90deg, #ffb400, #ff9600);
+        }
+
+        .btn-restart:hover {
+            color: #000;
+            transform: scale(1.02);
+            box-shadow: 0 0 30px rgba(255, 180, 0, 0.4);
+        }
+
+        .btn-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        /* METRICS GRID */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 12px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .metric-title {
+            font-size: 14px;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+        }
+
+        .metric-chart {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin: 0 auto;
+        }
+
+        .chartjs-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Radial Graph (CSS-based fallback) */
+        .radial-graph {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+        }
+
+        .radial-bg {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(
+                rgba(0, 255, 136, 0.3) 0deg,
+                rgba(0, 255, 136, 0.3) 360deg
+            );
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .radial-fill {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(
+                from 0deg,
+                #00ff88 0deg,
+                #00cc66 var(--percentage),
+                rgba(0, 255, 136, 0.2) var(--percentage),
+                rgba(0, 255, 136, 0.2) 360deg
+            );
+        }
+
+        .radial-inner {
+            width: 80%;
+            height: 80%;
+            background: linear-gradient(135deg, #0a0e27, #1a1f3a);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .radial-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .radial-unit {
+            font-size: 12px;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* INFO CARD */
+        .info-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 13px;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #aaa;
+        }
+
+        .info-value {
+            color: #00ff88;
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        /* CONSOLE SECTION */
+        .console-section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .console-box {
+            background: #000;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 8px;
+            height: 300px;
+            overflow-y: auto;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #00ff88;
+            line-height: 1.6;
+        }
+
+        .console-line {
+            margin-bottom: 4px;
+        }
+
+        .console-info {
+            color: #fff;
+        }
+
+        .console-warn {
+            color: #ffd700;
+        }
+
+        .console-error {
+            color: #ff6464;
+        }
+
+        .console-input-area {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .console-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 6px;
+            color: #fff;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .console-input::placeholder {
+            color: #666;
+        }
+
+        .console-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #00ff88, #00cc66);
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            text-transform: uppercase;
+            transition: all 0.2s ease;
+        }
+
+        .console-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .console-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .console-control-btn {
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s ease;
+        }
+
+        .console-control-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        @media (max-width: 1024px) {
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .control-panel {
+                grid-template-columns: 1fr;
+            }
+
+            .main-container {
+                padding: 20px;
+            }
+        }
+
+        .disabled-overlay {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOP BAR -->
+    <div class="top-bar">
+        <div class="server-title">
+            <button class="back-btn" onclick="goBack()">← Back</button>
+            <span class="server-name" id="serverName">Loading...</span>
+            <div class="status-indicator status-online" id="statusIndicator"></div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- CONTROL BUTTONS -->
+        <div class="control-panel">
+            <button class="control-btn btn-start" id="startBtn" onclick="startServer()">▶ Start</button>
+            <button class="control-btn btn-stop" id="stopBtn" onclick="stopServer()">⏹ Stop</button>
+            <button class="control-btn btn-restart" id="restartBtn" onclick="restartServer()">🔄 Restart</button>
+        </div>
+
+        <!-- METRICS -->
+        <div class="metrics-grid">
+            <!-- CPU USAGE -->
+            <div class="metric-card">
+                <div class="metric-title">CPU Usage</div>
+                <div class="metric-chart">
+                    <div class="radial-fill" id="cpuFill" style="--percentage: 45deg;"></div>
+                    <div class="radial-inner">
+                        <div class="radial-value" id="cpuValue">45%</div>
+                        <div class="radial-unit">CPU</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RAM USAGE -->
+            <div class="metric-card">
+                <div class="metric-title">RAM Usage</div>
+                <div class="metric-chart">
+                    <div class="radial-fill" id="ramFill" style="--percentage: 60deg;"></div>
+                    <div class="radial-inner">
+                        <div class="radial-value" id="ramValue">1.2 GB</div>
+                        <div class="radial-unit">/ 2 GB</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SERVER INFO -->
+        <div class="info-card">
+            <div class="metric-title" style="margin-bottom: 0;">Server Information</div>
+            <div class="info-row">
+                <span class="info-label">Server IP</span>
+                <span class="info-value" id="serverIp">localhost:25565</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Port</span>
+                <span class="info-value" id="serverPort">25565</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Players Online</span>
+                <span class="info-value" id="playersOnline">2/20</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Uptime</span>
+                <span class="info-value" id="uptime">12h 34m</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Version</span>
+                <span class="info-value" id="version">1.20.1</span>
+            </div>
+        </div>
+
+        <!-- LIVE CONSOLE -->
+        <div class="console-section">
+            <div class="section-title">📡 Live Console</div>
+            <div class="console-box" id="consoleBox">
+                <div class="console-line console-info">[PANEL] Console ready. Awaiting server output...</div>
+            </div>
+
+            <div class="console-input-area">
+                <input 
+                    type="text" 
+                    class="console-input" 
+                    id="commandInput" 
+                    placeholder="say Hello world! / give @s diamond /..."
+                    onkeypress="handleCommandKey(event)"
+                >
+                <button class="console-btn" onclick="sendCommand()">📤 Send</button>
+            </div>
+
+            <div class="console-controls">
+                <button class="console-control-btn" onclick="toggleAutoScroll()">
+                    <input type="checkbox" id="autoScroll" checked> Auto-Scroll
+                </button>
+                <button class="console-control-btn" onclick="clearConsole()">🗑️ Clear</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // WebSocket Connection
+        const socket = io();
+        
+        let serverStatus = 'offline';
+        const serverId = new URLSearchParams(window.location.search).get('id') || 1;
+        
+        // Mock server data
+        const serverData = {
+            1: { name: 'Vanilla Survival', port: 25565, maxPlayers: 20, version: '1.20.1' },
+            2: { name: 'Creative Test', port: 25566, maxPlayers: 0, version: '1.20.1' },
+            3: { name: 'Modded Adventure', port: 25567, maxPlayers: 30, version: '1.20.1' }
+        };
+
+        const server = serverData[serverId] || serverData[1];
+
+        // Initialize
+        document.getElementById('serverName').textContent = server.name;
+        document.getElementById('serverPort').textContent = server.port;
+
+        // Socket events
+        socket.on('console-output', (text) => {
+            addConsoleOutput(text, 'info');
+        });
+
+        socket.on('server-status', (status) => {
+            serverStatus = status;
+            updateStatusIndicator();
+            updateButtonStates();
+        });
+
+        // Control functions
+        function startServer() {
+            console.log('Starting server...');
+            socket.emit('start-server');
+            addConsoleOutput('[PANEL] Starting server...', 'info');
+        }
+
+        function stopServer() {
+            console.log('Stopping server...');
+            socket.emit('stop-server');
+            addConsoleOutput('[PANEL] Stopping server...', 'warn');
+        }
+
+        function restartServer() {
+            console.log('Restarting server...');
+            addConsoleOutput('[PANEL] Restarting server...', 'warn');
+            stopServer();
+            setTimeout(() => startServer(), 2000);
+        }
+
+        function sendCommand() {
+            const input = document.getElementById('commandInput');
+            const command = input.value.trim();
+            
+            if (command) {
+                socket.emit('send-command', command);
+                addConsoleOutput(`> ${command}`, 'info');
+                input.value = '';
+            }
+        }
+
+        function handleCommandKey(event) {
+            if (event.key === 'Enter') {
+                sendCommand();
+            }
+        }
+
+        function addConsoleOutput(text, type = 'info') {
+            const consoleBox = document.getElementById('consoleBox');
+            const line = document.createElement('div');
+            line.className = `console-line console-${type}`;
+            line.textContent = text;
+            consoleBox.appendChild(line);
+
+            if (document.getElementById('autoScroll').checked) {
+                consoleBox.scrollTop = consoleBox.scrollHeight;
+            }
+        }
+
+        function clearConsole() {
+            document.getElementById('consoleBox').innerHTML = '';
+            addConsoleOutput('[PANEL] Console cleared.', 'info');
+        }
+
+        function toggleAutoScroll() {
+            const checkbox = document.getElementById('autoScroll');
+            checkbox.checked = !checkbox.checked;
+        }
+
+        function updateStatusIndicator() {
+            const indicator = document.getElementById('statusIndicator');
+            indicator.className = `status-indicator status-${serverStatus}`;
+        }
+
+        function updateButtonStates() {
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            
+            if (serverStatus === 'online') {
+                startBtn.classList.add('btn-disabled');
+                stopBtn.classList.remove('btn-disabled');
+            } else {
+                startBtn.classList.remove('btn-disabled');
+                stopBtn.classList.add('btn-disabled');
+            }
+        }
+
+        function goBack() {
+            window.location.href = '/dashboard.html';
+        }
+
+        // Simulate metrics updates
+        setInterval(() => {
+            if (serverStatus === 'online') {
+                const cpu = Math.random() * 80;
+                const ram = (Math.random() * 1.5 + 0.5).toFixed(2);
+                
+                document.getElementById('cpuValue').textContent = Math.round(cpu) + '%';
+                document.getElementById('cpuFill').style.setProperty('--percentage', (cpu * 3.6) + 'deg');
+                
+                document.getElementById('ramValue').textContent = ram + ' GB';
+                document.getElementById('ramFill').style.setProperty('--percentage', (ram / 2 * 360) + 'deg');
+            }
+        }, 2000);
+
+        // Check authentication
+        if (!localStorage.getItem('isLoggedIn')) {
+            window.location.href = '/login.html';
+        }
+    </script>
+
+</body>
+</html>
