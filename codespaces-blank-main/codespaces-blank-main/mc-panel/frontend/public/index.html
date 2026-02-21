@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Private MC Panel</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 20px;
+        }
+        .dashboard {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #00e676;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:hover { background-color: #00c853; }
+        
+        /* The Terminal Box */
+        .console {
+            background-color: #000;
+            border: 1px solid #333;
+            border-radius: 8px;
+            height: 400px;
+            overflow-y: auto;
+            padding: 15px;
+            font-family: monospace;
+            color: #00ff00;
+        }
+        .log-line { margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <div class="header">
+        <h2>🎮 SMP Dashboard</h2>
+        <button id="startBtn">▶ Start Server</button>
+    </div>
+
+    <h3>Live Console</h3>
+    <div class="console" id="consoleBox">
+        <div class="log-line">Waiting for server logs...</div>
+    </div>
+</div>
+
+<script>
+    // Connect the browser to the Node.js backend
+    const socket = io();
+    const consoleBox = document.getElementById('consoleBox');
+    const startBtn = document.getElementById('startBtn');
+
+    // Tell the backend to start the server when the button is clicked
+    startBtn.addEventListener('click', () => {
+        socket.emit('start-server');
+    });
+
+    // Listen for text coming FROM the Minecraft server
+    socket.on('console-output', (text) => {
+        const log = document.createElement('div');
+        log.className = 'log-line';
+        log.innerText = text;
+        consoleBox.appendChild(log);
+        
+        // Auto-scroll to the bottom
+        consoleBox.scrollTop = consoleBox.scrollHeight;
+    });
+</script>
+
+</body>
+</html>
