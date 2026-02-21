@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Software Hub - Apex Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+            color: #e6eef8;
+            min-height: 100vh;
+        }
+
+        /* CSS Variables for Apex colors */
+        :root {
+            --navy: #0d1117;
+            --navy-light: #161b22;
+            --emerald: #00e676;
+            --emerald-dark: #00c853;
+            --ruby: #ff4d4d;
+            --ruby-dark: #ff2626;
+            --muted: #8b949e;
+            --text: #e6eef8;
+            --glass: rgba(13, 17, 23, 0.5);
+        }
+
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: var(--navy-light);
+            padding: 24px 0;
+            overflow-y: auto;
+            border-right: 1px solid rgba(0, 230, 118, 0.1);
+            z-index: 1000;
+        }
+
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 24px 32px;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--emerald);
+        }
+
+        .sidebar-logo span {
+            font-size: 18px;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .nav-item {
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 14px;
+            border-left: 3px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-item:hover {
+            color: var(--text);
+            background: rgba(0, 230, 118, 0.05);
+        }
+
+        .nav-item.active {
+            color: var(--emerald);
+            background: linear-gradient(90deg, rgba(0, 230, 118, 0.15), rgba(0, 230, 118, 0.05));
+            border-left-color: var(--emerald);
+        }
+
+        .container {
+            margin-left: 280px;
+            padding: 32px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 48px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid rgba(0, 230, 118, 0.1);
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 16px;
+            background: var(--glass);
+            border: 1px solid rgba(0, 230, 118, 0.2);
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .user-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--emerald);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .software-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .software-card {
+            background: var(--glass);
+            border: 1px solid rgba(0, 230, 118, 0.2);
+            border-radius: 12px;
+            padding: 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .software-card:hover {
+            border-color: var(--emerald);
+            box-shadow: 0 8px 32px rgba(0, 230, 118, 0.25);
+            transform: translateY(-4px);
+        }
+
+        .software-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .software-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .software-description {
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .software-status {
+            font-size: 11px;
+            color: var(--emerald);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        /* Version Dropdown */
+        .version-dropdown {
+            display: none;
+            background: var(--navy);
+            border: 1px solid rgba(0, 230, 118, 0.2);
+            border-radius: 8px;
+            margin-top: 16px;
+            padding: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .version-dropdown.active {
+            display: block;
+        }
+
+        .version-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text);
+            margin-bottom: 4px;
+            transition: all 0.2s;
+        }
+
+        .version-item:hover {
+            background: rgba(0, 230, 118, 0.1);
+            color: var(--emerald);
+        }
+
+        .version-item.selected {
+            background: linear-gradient(135deg, rgba(0, 230, 118, 0.2), rgba(0, 230, 118, 0.05));
+            color: var(--emerald);
+            border-left: 3px solid var(--emerald);
+            padding-left: 9px;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid rgba(0, 230, 118, 0.3);
+            border-top-color: var(--emerald);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Deploy Button */
+        .deploy-section {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .deploy-btn {
+            flex: 1;
+            background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
+            border: none;
+            color: #000;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .deploy-btn:hover:not(:disabled) {
+            box-shadow: 0 8px 24px rgba(0, 230, 118, 0.35);
+            transform: translateY(-2px);
+        }
+
+        .deploy-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .deploy-btn.loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .custom-input-section {
+            padding: 16px;
+            background: var(--navy);
+            border: 1px solid rgba(0, 230, 118, 0.2);
+            border-radius: 8px;
+            margin-top: 12px;
+            display: none;
+        }
+
+        .custom-input-section.active {
+            display: block;
+        }
+
+        .custom-input-label {
+            font-size: 12px;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            display: block;
+            font-weight: 600;
+        }
+
+        .custom-input {
+            width: 100%;
+            padding: 8px 12px;
+            background: transparent;
+            border: 1px solid rgba(0, 230, 118, 0.2);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .custom-input:focus {
+            outline: none;
+            border-color: var(--emerald);
+            box-shadow: 0 0 12px rgba(0, 230, 118, 0.1);
+        }
+
+        /* Info Banner */
+        .info-banner {
+            background: var(--glass);
+            border-left: 3px solid var(--emerald);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 32px;
+            backdrop-filter: blur(10px);
+            font-size: 13px;
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        /* Modpack Grid */
+        .modpack-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-top: 12px;
+            max-height: 250px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .modpack-item {
+            background: var(--navy);
+            border: 1px solid rgba(0, 230, 118, 0.15);
+            border-radius: 6px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+
+        .modpack-item:hover {
+            border-color: var(--emerald);
+            background: rgba(0, 230, 118, 0.05);
+        }
+
+        .modpack-item.selected {
+            border-color: var(--emerald);
+            background: linear-gradient(135deg, rgba(0, 230, 118, 0.15), rgba(0, 230, 118, 0.05));
+            color: var(--emerald);
+        }
+
+        .modpack-name {
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .modpack-desc {
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 64px;
+            }
+
+            .sidebar-logo span {
+                display: none;
+            }
+
+            .nav-item span:not(.icon) {
+                display: none;
+            }
+
+            .container {
+                margin-left: 64px;
+                padding: 16px;
+            }
+
+            .software-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 16px;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-logo">
+            <span>⚡</span> Apex Panel
+        </div>
+        <div class="sidebar-nav">
+            <a class="nav-item" onclick="navigate('dashboard.html')">
+                📊 Dashboard
+            </a>
+            <a class="nav-item" onclick="navigate('hub.html')">
+                🎮 Software Hub
+            </a>
+            <a class="nav-item" onclick="navigate('console.html')">
+                💻 Console
+            </a>
+            <a class="nav-item" onclick="navigate('files.html')">
+                📁 Files
+            </a>
+            <a class="nav-item" onclick="navigate('settings.html')">
+                ⚙️ Settings
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Software Hub</h1>
+            <div class="user-badge">
+                <div class="user-dot"></div>
+                <span id="username">Admin</span>
+            </div>
+        </div>
+
+        <!-- Info Banner -->
+        <div class="info-banner">
+            💡 <strong>Select a server software</strong> to view available versions and deploy. Each software has unique configurations and features. Choose carefully and click "Deploy" to install.
+        </div>
+
+        <!-- Software Grid -->
+        <div class="software-grid">
+            <!-- PaperMC Card -->
+            <div class="software-card" onclick="toggleVersions(this, 'paper')">
+                <div class="software-icon">📄</div>
+                <div class="software-name">PaperMC</div>
+                <div class="software-description">High-performance Spigot fork with optimizations and bug fixes. Recommended for most servers.</div>
+                <div class="software-status">✓ Recommended</div>
+                <div class="version-dropdown" data-software="paper">
+                    <div class="spinner"></div> Loading versions...
+                </div>
+                <div class="deploy-section">
+                    <button class="deploy-btn" onclick="deployVersion(event, 'paper')">Deploy</button>
+                </div>
+            </div>
+
+            <!-- Spigot Card -->
+            <div class="software-card" onclick="toggleVersions(this, 'spigot')">
+                <div class="software-icon">🛠️</div>
+                <div class="software-name">Spigot</div>
+                <div class="software-description">Community server software with plugin support. More customizable than Vanilla.</div>
+                <div class="software-status">✓ Compatible</div>
+                <div class="version-dropdown" data-software="spigot">
+                    <div class="spinner"></div> Loading versions...
+                </div>
+                <div class="deploy-section">
+                    <button class="deploy-btn" onclick="deployVersion(event, 'spigot')">Deploy</button>
+                </div>
+            </div>
+
+            <!-- Vanilla Card -->
+            <div class="software-card" onclick="toggleVersions(this, 'vanilla')">
+                <div class="software-icon">🎮</div>
+                <div class="software-name">Vanilla</div>
+                <div class="software-description">Official Minecraft server from Mojang. Purest vanilla experience with no modifications.</div>
+                <div class="software-status">✓ Official</div>
+                <div class="version-dropdown" data-software="vanilla">
+                    <div class="spinner"></div> Loading versions...
+                </div>
+                <div class="deploy-section">
+                    <button class="deploy-btn" onclick="deployVersion(event, 'vanilla')">Deploy</button>
+                </div>
+            </div>
+
+            <!-- Snapshots Card -->
+            <div class="software-card" onclick="toggleVersions(this, 'snapshot')">
+                <div class="software-icon">🔬</div>
+                <div class="software-name">Snapshots</div>
+                <div class="software-description">Pre-release Vanilla versions. Experimental features and early access to new content.</div>
+                <div class="software-status">⚠️ Experimental</div>
+                <div class="version-dropdown" data-software="snapshot">
+                    <div class="spinner"></div> Loading versions...
+                </div>
+                <div class="deploy-section">
+                    <button class="deploy-btn" onclick="deployVersion(event, 'snapshot')">Deploy</button>
+                </div>
+            </div>
+
+            <!-- Forge Card -->
+            <div class="software-card" onclick="toggleVersions(this, 'forge')">
+                <div class="software-icon">⚙️</div>
+                <div class="software-name">Forge</div>
+                <div class="software-description">Mod loader with powerful modding framework. Runs mods that modify game mechanics.</div>
+                <div class="software-status">🔧 Modding</div>
+                <div class="version-dropdown" data-software="forge">
+                    <div class="spinner"></div> Loading versions...
+                </div>
+                <div class="deploy-section">
+                    <button class="deploy-btn" onclick="deployVersion(event, 'forge')">Deploy</button>
+                </div>
+            </div>
+
+            <!-- Fabric Card -->
+            <div class="software-card" onclick="toggleVersions(this, 'fabric')">
+                <div class="software-icon">🧵</div>
+                <div class="software-name">Fabric</div>
+                <div class="software-description">Lightweight mod loader with minimal overhead. Great for mods and total conversions.</div>
+                <div class="software-status">🔧 Modding</div>
+                <div class="version-dropdown" data-software="fabric">
+                    <div class="spinner"></div> Loading versions...
+                </div>
+                <div class="deploy-section">
+                    <button class="deploy-btn" onclick="deployVersion(event, 'fabric')">Deploy</button>
+                </div>
+            </div>
+
+            <!-- CurseForge Card -->
+            <div class="software-card" onclick="toggleVersions(this, 'curseforge')">
+                <div class="software-icon">📦</div>
+                <div class="software-name">CurseForge</div>
+                <div class="software-description">Ready-made modpacks with pre-configured mods. Paste a Modpack ID to auto-install.</div>
+                <div class="software-status">📔 Modpacks</div>
+                <div class="custom-input-section" data-software="curseforge">
+                    <label class="custom-input-label">Modpack ID (from CurseForge):</label>
+                    <input type="text" class="custom-input" id="curseforge-input" placeholder="Example: 425017">
+                    <div style="font-size: 11px; color: var(--muted); margin-top: 8px;">
+                        Find modpacks at <strong>curseforge.com</strong> and use the ID from the URL.
+                    </div>
+                </div>
+                <div class="deploy-section">
+                    <button class="deploy-btn" onclick="deployVersion(event, 'curseforge')">Deploy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        // Get username from localStorage
+        const storedUsername = localStorage.getItem('panelUsername');
+        if (storedUsername) {
+            document.getElementById('username').textContent = storedUsername;
+        }
+
+        // Initialize Socket.io
+        const socket = io();
+
+        // Track selected versions
+        const selectedVersions = {};
+
+        // Navigate to different pages
+        function navigate(page) {
+            window.location.href = `/${page}`;
+        }
+
+        // Mark active nav item
+        function updateActiveNav() {
+            const currentPage = window.location.pathname.split('/').pop() || 'dashboard.html';
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelectorAll(`.nav-item`).forEach(item => {
+                if (item.textContent.toLowerCase().includes('software hub') || item.onclick?.toString().includes('hub.html')) {
+                    item.classList.add('active');
+                }
+            });
+        }
+        updateActiveNav();
+
+        // Toggle version dropdown and fetch versions
+        async function toggleVersions(card, software) {
+            const dropdown = card.querySelector('.version-dropdown');
+            dropdown.classList.toggle('active');
+
+            // Only fetch if not already loaded
+            if (dropdown.textContent.includes('Loading') && dropdown.classList.contains('active')) {
+                await fetchVersions(software, dropdown);
+            }
+        }
+
+        // Fetch versions from API
+        async function fetchVersions(software, dropdown) {
+            try {
+                let versions = [];
+
+                if (software === 'paper') {
+                    const resp = await fetch('/api/paper-versions');
+                    const data = await resp.json();
+                    versions = data.versions || [];
+                } else if (software === 'vanilla') {
+                    const resp = await fetch('/api/vanilla-versions');
+                    const data = await resp.json();
+                    versions = data.versions || [];
+                } else if (software === 'snapshot') {
+                    const resp = await fetch('/api/vanilla-versions?snapshot=true');
+                    const data = await resp.json();
+                    versions = data.versions || [];
+                } else if (software === 'spigot') {
+                    // Spigot uses same versions as PaperMC
+                    const resp = await fetch('/api/paper-versions');
+                    const data = await resp.json();
+                    versions = data.versions || [];
+                } else if (software === 'forge') {
+                    const resp = await fetch('/api/forge-versions');
+                    const data = await resp.json();
+                    versions = data.versions || [];
+                } else if (software === 'fabric') {
+                    const resp = await fetch('/api/fabric-versions');
+                    const data = await resp.json();
+                    versions = data.versions || [];
+                }
+
+                // Render versions
+                dropdown.innerHTML = '';
+                
+                if (versions.length === 0) {
+                    dropdown.innerHTML = '<div class="version-item" style="color: var(--muted);">No versions found</div>';
+                    return;
+                }
+
+                versions.slice(0, 15).forEach(version => {
+                    const item = document.createElement('div');
+                    item.className = 'version-item';
+                    if (selectedVersions[software] === version) {
+                        item.classList.add('selected');
+                    }
+                    item.textContent = version;
+                    item.onclick = (e) => {
+                        e.stopPropagation();
+                        selectVersion(software, version);
+                    };
+                    dropdown.appendChild(item);
+                });
+            } catch (e) {
+                dropdown.innerHTML = '<div class="version-item" style="color: var(--ruby);">Error loading versions</div>';
+                console.error('Version fetch error:', e);
+            }
+        }
+
+        // Select a version
+        function selectVersion(software, version) {
+            selectedVersions[software] = version;
+            const dropdown = document.querySelector(`[data-software="${software}"]`);
+            dropdown.querySelectorAll('.version-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            event.target?.classList.add('selected');
+        }
+
+        // Deploy version
+        function deployVersion(e, software) {
+            e.stopPropagation();
+
+            let version = selectedVersions[software];
+
+            // Special handling for CurseForge (requires modpack ID)
+            if (software === 'curseforge') {
+                const input = document.getElementById('curseforge-input');
+                version = input.value.trim();
+                if (!version) {
+                    alert('Please paste a CurseForge Modpack ID');
+                    return;
+                }
+            }
+
+            if (!version) {
+                alert(`Please select a ${software} version first`);
+                return;
+            }
+
+            const btn = e.target;
+            btn.disabled = true;
+            btn.classList.add('loading');
+            btn.innerHTML = '<span class="spinner"></span> Deploying...';
+
+            // Emit deploy event to backend
+            socket.emit('deploy-server', { type: software, version: version }, (response) => {
+                btn.disabled = false;
+                btn.classList.remove('loading');
+                btn.innerHTML = 'Deploy';
+
+                if (response && response.success) {
+                    // Redirect to console
+                    setTimeout(() => {
+                        window.location.href = '/console.html';
+                    }, 500);
+                } else {
+                    alert(`Deployment failed: ${response?.message || 'Unknown error'}`);
+                }
+            });
+        }
+
+        // Listen for deployment progress
+        socket.on('console-output', (msg) => {
+            console.log('Server:', msg);
+        });
+
+        socket.on('install-progress', (pct) => {
+            console.log('Progress:', pct);
+        });
+
+        socket.on('install-complete', () => {
+            console.log('Installation complete');
+        });
+    </script>
+</body>
+</html>

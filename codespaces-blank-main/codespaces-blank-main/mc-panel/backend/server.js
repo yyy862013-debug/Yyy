@@ -3,9 +3,10 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const axios = require('axios');
+const cookieParser = require('cookie-parser');
 
 // Import the engine we built earlier
-const { startServer, stopServer, sendCommand, downloadServerJar } = require('./instance-manager');
+const { startServer, stopServer, sendCommand, downloadServerJar, deployServer } = require('./instance-manager');
 
 const app = express();
 const server = http.createServer(app);
@@ -16,11 +17,17 @@ const io = new Server(server, {
 // Parse URL-encoded bodies (login form)
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());  // Also support JSON posts
+app.use(cookieParser());  // Parse cookies
 
 // Simple auth helper (cookie-based)
 function isAuthenticated(req){
+    // Check parsed cookies first (cookie-parser)
+    if (req.cookies && req.cookies.panelAuth === '1') {
+        return true;
+    }
+    // Fallback to manual cookie parsing (for direct header access)
     const c = req.headers.cookie || '';
-    return c.split(';').map(s=>s.trim()).some(s=>s === 'panelAuth=1');
+    return c.split(';').some(s => s.trim() === 'panelAuth=1');
 }
 
 // Root and dashboard routing: force login phase first
@@ -37,6 +44,7 @@ const authMiddleware = (req, res, next) => {
 
 // Protect all page routes
 app.get('/dashboard.html', authMiddleware, (req, res, next) => next());
+app.get('/hub.html', authMiddleware, (req, res, next) => next());
 app.get('/console.html', authMiddleware, (req, res, next) => next());
 app.get('/files.html', authMiddleware, (req, res, next) => next());
 app.get('/backups.html', authMiddleware, (req, res, next) => next());
@@ -72,8 +80,18 @@ app.get('/api/server-status', authMiddleware, (req, res) => {
 app.post('/login', (req, res) => {
     const { username, password } = req.body || {};
     if (username === 'admin' && password === 'password') {
-        // set a simple cookie (not secure; fine for private local use)
-        res.setHeader('Set-Cookie', 'panelAuth=1; Path=/');
+        // Set a persistent cookie (7 days)
+        const cookieOptions = {
+            path: '/',
+            maxAge: 7 * 24 * 60 * 60 * 1000,  // 7 days in milliseconds
+            httpOnly: false,  // Allow JS access for menu display
+            sameSite: 'Lax'
+        };
+        
+        // Also store username for frontend display
+        res.cookie('panelAuth', '1', cookieOptions);
+        res.cookie('panelUsername', username, cookieOptions);
+        
         return res.redirect('/dashboard.html');
     }
     return res.status(401).send('Invalid credentials');
@@ -111,11 +129,68 @@ app.get('/api/paper-builds/:version', async (req, res) => {
 app.get('/api/vanilla-versions', async (req, res) => {
     try {
         const r = await axios.get('https://launchermeta.mojang.com/mc/game/version_manifest.json');
-        // return only release versions (exclude snapshots) to avoid entries without server jar
-        const ids = (r.data && r.data.versions) ? r.data.versions.filter(v => v.type === 'release').map(v => v.id) : [];
+        const snapshot = req.query.snapshot === 'true';
+        // Filter versions - snapshots OR releases depending on query param
+        const ids = (r.data && r.data.versions) ? r.data.versions
+            .filter(v => snapshot ? v.type === 'snapshot' : v.type === 'release')
+            .map(v => v.id) : [];
         return res.json({ versions: ids });
     } catch (e) {
         return res.status(500).json({ error: e.message });
+    }
+});
+
+// Forge versions endpoint
+app.get('/api/forge-versions', async (req, res) => {
+    try {
+        // Fetch latest Forge promotions
+        const r = await axios.get('https://files.minecraftforge.net/maven/net/minecraftforge/forge/promotions_slim.json');
+        const promos = r.data.promos || {};
+        
+        // Extract unique versions (e.g., "1.20.1-latest" -> "1.20.1")
+        const versions = new Set();
+        Object.keys(promos).forEach(key => {
+            const parts = key.split('-');
+            if (parts[0]) versions.add(parts[0]);
+        });
+        
+        return res.json({ versions: Array.from(versions).sort().reverse().slice(0, 20) });
+    } catch (e) {
+        // Fallback to common versions
+        return res.json({ versions: ['1.20.1', '1.20', '1.19.2', '1.18.2', '1.17.1'] });
+    }
+});
+
+// Fabric versions endpoint
+app.get('/api/fabric-versions', async (req, res) => {
+    try {
+        // Fetch Fabric loader versions
+        const r = await axios.get('https://meta.fabricmc.net/v2/versions/game');
+        const versions = r.data
+            .filter(v => v.stable)
+            .map(v => v.version)
+            .slice(0, 20);
+        
+        return res.json({ versions });
+    } catch (e) {
+        // Fallback
+        return res.json({ versions: ['1.20.1', '1.20', '1.19.2', '1.18.2'] });
+    }
+});
+
+// CurseForge modpack info endpoint (given modpack ID)
+app.get('/api/curseforge/modpack/:id', async (req, res) => {
+    try {
+        const modpackId = req.params.id;
+        // CurseForge API requires key; for now, return basic structure
+        // In production, you'd make actual API calls to CurseForge
+        return res.json({ 
+            modpackId,
+            status: 'ready',
+            message: `Modpack ${modpackId} queued for deployment` 
+        });
+    } catch (e) {
+        return res.status(400).json({ error: e.message });
     }
 });
 
@@ -141,7 +216,7 @@ io.on('connection', (socket) => {
         sendCommand(command);
     });
 
-    // Handle install-version event (download server.jar)
+// Handle install-version event (download server.jar)
     socket.on('install-version', (versionTag) => {
         console.log(`[SOCKET] User requested install-version: ${versionTag}`);
         // Pass the io instance so installer can emit progress messages
@@ -151,6 +226,20 @@ io.on('connection', (socket) => {
         } catch (e) { }
         // call installer
         downloadServerJar(versionTag, io);
+    });
+
+    // Handle deploy-server event (deploy any server type)
+    socket.on('deploy-server', async (payload, callback) => {
+        console.log(`[SOCKET] User requested deploy-server:`, payload);
+        try {
+            const { type, version } = payload;
+            const im = require('./instance-manager');
+            const result = await im.deployServer(type, version, io);
+            callback({ success: true, message: 'Deployment started', result });
+        } catch (err) {
+            console.error('[SOCKET] Deploy error:', err);
+            callback({ success: false, message: err.message });
+        }
     });
 
     // Cancel ongoing install
