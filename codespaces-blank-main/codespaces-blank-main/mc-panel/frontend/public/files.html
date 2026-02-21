@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MC Panel - File Manager</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            min-height: 100vh;
+            color: #ffffff;
+        }
+
+        .top-bar {
+            background: rgba(15, 20, 40, 0.95);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+        }
+
+        .tool-btn {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            color: #00ff88;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .tool-btn:hover {
+            background: rgba(0, 255, 136, 0.2);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 70px);
+        }
+
+        /* SIDEBAR - Directory Tree */
+        .sidebar {
+            width: 250px;
+            background: rgba(20, 25, 45, 0.8);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .sidebar-title {
+            font-size: 12px;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+
+        .tree-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #bbb;
+            font-size: 13px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .tree-item:hover {
+            background: rgba(0, 255, 136, 0.1);
+            color: #00ff88;
+        }
+
+        .tree-item.active {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            border-left: 3px solid #00ff88;
+            padding-left: 9px;
+        }
+
+        .tree-toggle {
+            width: 16px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 10px;
+        }
+
+        .tree-children {
+            display: none;
+            margin-left: 20px;
+        }
+
+        .tree-children.expanded {
+            display: block;
+        }
+
+        /* MAIN AREA */
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .breadcrumb {
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 12px 40px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .breadcrumb span {
+            cursor: pointer;
+            color: #00ff88;
+            transition: color 0.2s ease;
+        }
+
+        .breadcrumb span:hover {
+            color: #00ff99;
+        }
+
+        .file-explorer {
+            flex: 1;
+            padding: 30px 40px;
+            overflow-y: auto;
+        }
+
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 20px;
+        }
+
+        .file-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .file-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(0, 255, 136, 0.5);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0, 255, 136, 0.1);
+        }
+
+        .file-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .file-name {
+            font-size: 12px;
+            color: #fff;
+            word-break: break-word;
+            margin-bottom: 5px;
+        }
+
+        .file-size {
+            font-size: 10px;
+            color: #888;
+        }
+
+        .file-item.selected {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .file-item.folder {
+            cursor: pointer;
+        }
+
+        /* CONTEXT MENU */
+        .context-menu {
+            display: none;
+            position: fixed;
+            background: rgba(20, 25, 45, 0.95);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 6px;
+            z-index: 1000;
+            min-width: 150px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .context-menu.active {
+            display: block;
+        }
+
+        .context-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            color: #fff;
+            font-size: 12px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .context-item:hover {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        .context-danger {
+            color: #ff6464;
+        }
+
+        .context-danger:hover {
+            background: rgba(255, 100, 100, 0.2);
+            color: #ff8888;
+        }
+
+        /* MODALS */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: rgba(20, 25, 45, 0.95);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            backdrop-filter: blur(10px);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 20px;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .modal-input::placeholder {
+            color: #666;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn-confirm {
+            background: linear-gradient(135deg, #00ff88, #00cc66);
+            color: #000;
+        }
+
+        .modal-btn-confirm:hover {
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .modal-btn-cancel {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-btn-cancel:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 200px;
+            }
+
+            .file-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+
+            .file-explorer {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOP BAR -->
+    <div class="top-bar">
+        <button class="back-btn" onclick="goBack()">← Back to Server</button>
+        <div class="toolbar">
+            <button class="tool-btn" onclick="openUploadModal()">📤 Upload</button>
+            <button class="tool-btn" onclick="openNewFolderModal()">📁 New Folder</button>
+            <button class="tool-btn" onclick="deleteSelected()" style="border-color: rgba(255, 100, 100, 0.3); color: #ff6464;">🗑️ Delete</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- SIDEBAR - Directory Tree -->
+        <div class="sidebar">
+            <div class="sidebar-title">📂 Directories</div>
+            
+            <div class="tree-item active" onclick="navigateFolder('/root')">
+                <span class="tree-toggle">▼</span>
+                <span>📂 Server Root</span>
+            </div>
+
+            <div class="tree-children expanded" id="tree-root">
+                <div class="tree-item" onclick="navigateFolder('/root/world')">📂 world</div>
+                <div class="tree-item" onclick="navigateFolder('/root/plugins')">📂 plugins</div>
+                <div class="tree-item" onclick="navigateFolder('/root/mods')">📂 mods</div>
+                <div class="tree-item" onclick="navigateFolder('/root/config')">⚙️ config</div>
+                <div class="tree-item" onclick="navigateFolder('/root/logs')">📋 logs</div>
+                <div class="tree-item" onclick="navigateFolder('/root/backups')">💾 backups</div>
+            </div>
+        </div>
+
+        <!-- MAIN AREA -->
+        <div class="main-area">
+            <!-- BREADCRUMB -->
+            <div class="breadcrumb">
+                <span onclick="navigateFolder('/root')">Server Root</span>
+                <span>/</span>
+                <span id="breadcrumbPath">world</span>
+            </div>
+
+            <!-- FILE EXPLORER -->
+            <div class="file-explorer" id="fileExplorer" oncontextmenu="showContextMenu(event)">
+                <div class="file-grid" id="fileGrid">
+                    <!-- Files will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTEXT MENU -->
+    <div class="context-menu" id="contextMenu">
+        <div class="context-item" onclick="editFile()">✏️ Edit</div>
+        <div class="context-item" onclick="downloadFile()">📥 Download</div>
+        <div class="context-item context-danger" onclick="deleteFile()">🗑️ Delete</div>
+    </div>
+
+    <!-- UPLOAD MODAL -->
+    <div class="modal" id="uploadModal">
+        <div class="modal-content">
+            <div class="modal-title">Upload File</div>
+            <div style="margin-bottom: 20px;">
+                <div style="border: 2px dashed rgba(0, 255, 136, 0.3); border-radius: 8px; padding: 40px; text-align: center; cursor: pointer;" id="dropZone">
+                    <div style="font-size: 32px; margin-bottom: 10px;">📁</div>
+                    <div style="color: #aaa;">Drag & drop files here or click to select</div>
+                </div>
+                <input type="file" id="fileInput" style="display: none;" multiple onchange="handleFileUpload(event)">
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel" onclick="closeUploadModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW FOLDER MODAL -->
+    <div class="modal" id="newFolderModal">
+        <div class="modal-content">
+            <div class="modal-title">Create New Folder</div>
+            <input type="text" class="modal-input" id="folderNameInput" placeholder="Enter folder name">
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel" onclick="closeNewFolderModal()">Cancel</button>
+                <button class="modal-btn modal-btn-confirm" onclick="createNewFolder()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let currentPath = '/root/world';
+        let selectedFile = null;
+
+        // File types and icons
+        const fileIcons = {
+            'jar': '🏺',
+            'yml': '⚙️',
+            'yaml': '⚙️',
+            'json': '{ }',
+            'txt': '📄',
+            'properties': '📋',
+            'log': '📜',
+            'zip': '📦',
+            'world': '🌍',
+            'default': '📎'
+        };
+
+        // Sample files
+        const mockFiles = {
+            '/root/world': [
+                { name: 'level.dat', size: '512 KB', type: 'file', icon: '🌍' },
+                { name: 'level.dat_old', size: '512 KB', type: 'file', icon: '🌍' },
+                { name: 'data', size: '---', type: 'folder', icon: '📂' },
+                { name: 'region', size: '---', type: 'folder', icon: '📂' }
+            ],
+            '/root/plugins': [
+                { name: 'CoreProtect.jar', size: '2.3 MB', type: 'file', icon: '🏺' },
+                { name: 'Essentials.jar', size: '1.8 MB', type: 'file', icon: '🏺' },
+                { name: 'LiteBans.jar', size: '890 KB', type: 'file', icon: '🏺' }
+            ],
+            '/root/mods': [
+                { name: 'fabric-api.jar', size: '5.2 MB', type: 'file', icon: '🏺' },
+                { name: 'sodium.jar', size: '3.1 MB', type: 'file', icon: '🏺' }
+            ],
+            '/root/config': [
+                { name: 'server.properties', size: '4.2 KB', type: 'file', icon: '📋' },
+                { name: 'bukkit.yml', size: '8.7 KB', type: 'file', icon: '⚙️' },
+                { name: 'spigot.yml', size: '15 KB', type: 'file', icon: '⚙️' }
+            ],
+            '/root/logs': [
+                { name: 'latest.log', size: '256 KB', type: 'file', icon: '📜' },
+                { name: '2024-02-15.log', size: '189 KB', type: 'file', icon: '📜' }
+            ],
+            '/root/backups': [
+                { name: 'backup-2024-02-15.zip', size: '562 MB', type: 'file', icon: '📦' },
+                { name: 'backup-2024-02-10.zip', size: '545 MB', type: 'file', icon: '📦' }
+            ]
+        };
+
+        function navigateFolder(path) {
+            currentPath = path;
+            document.getElementById('breadcrumbPath').textContent = path.split('/').pop();
+            renderFiles();
+        }
+
+        function renderFiles() {
+            const fileGrid = document.getElementById('fileGrid');
+            const files = mockFiles[currentPath] || [];
+
+            if (!files.length) {
+                fileGrid.innerHTML = '<div class="empty-state" style="grid-column: 1 / -1;"><div class="empty-icon">📭</div><div>No files found</div></div>';
+                return;
+            }
+
+            fileGrid.innerHTML = files.map(file => `
+                <div class="file-item ${file.type === 'folder' ? 'folder' : ''}" 
+                     ondblclick="${file.type === 'folder' ? `navigateFolder('${currentPath}/${file.name}')` : `editFile()`}"
+                     onclick="selectFile(this, '${file.name}')"
+                     oncontextmenu="showContextMenu(event, '${file.name}')">
+                    <div class="file-icon">${file.icon}</div>
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-size">${file.size}</div>
+                </div>
+            `).join('');
+        }
+
+        function selectFile(element, fileName) {
+            document.querySelectorAll('.file-item').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedFile = fileName;
+        }
+
+        function showContextMenu(event, fileName) {
+            event.preventDefault();
+            const menu = document.getElementById('contextMenu');
+            menu.classList.add('active');
+            menu.style.top = event.clientY + 'px';
+            menu.style.left = event.clientX + 'px';
+            selectedFile = fileName;
+
+            document.addEventListener('click', () => menu.classList.remove('active'), { once: true });
+        }
+
+        function editFile() {
+            if (selectedFile) {
+                console.log('Editing:', selectedFile);
+                // Open file editor modal
+            }
+        }
+
+        function downloadFile() {
+            if (selectedFile) {
+                console.log('Downloading:', selectedFile);
+            }
+        }
+
+        function deleteFile() {
+            if (selectedFile && confirm(`Delete ${selectedFile}?`)) {
+                console.log('Deleted:', selectedFile);
+                selectedFile = null;
+                renderFiles();
+            }
+        }
+
+        function deleteSelected() {
+            if (selectedFile) {
+                deleteFile();
+            }
+        }
+
+        function openUploadModal() {
+            document.getElementById('uploadModal').classList.add('active');
+            setupDragAndDrop();
+        }
+
+        function closeUploadModal() {
+            document.getElementById('uploadModal').classList.remove('active');
+        }
+
+        function openNewFolderModal() {
+            document.getElementById('newFolderModal').classList.add('active');
+            document.getElementById('folderNameInput').focus();
+        }
+
+        function closeNewFolderModal() {
+            document.getElementById('newFolderModal').classList.remove('active');
+        }
+
+        function createNewFolder() {
+            const folderName = document.getElementById('folderNameInput').value;
+            if (folderName) {
+                console.log('Created folder:', folderName);
+                closeNewFolderModal();
+                // Refresh file list
+            }
+        }
+
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+
+            dropZone.addEventListener('click', () => fileInput.click());
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.style.background = 'rgba(0, 255, 136, 0.2)';
+            });
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.style.background = '';
+            });
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                handleFileUpload(e);
+            });
+        }
+
+        function handleFileUpload(e) {
+            const files = e.dataTransfer?.files || e.target.files;
+            console.log('Uploading files:', files);
+            closeUploadModal();
+            renderFiles();
+        }
+
+        function goBack() {
+            window.location.href = '/server.html';
+        }
+
+        // Initialize
+        renderFiles();
+
+        // Check authentication
+        if (!localStorage.getItem('isLoggedIn')) {
+            window.location.href = '/login.html';
+        }
+    </script>
+
+</body>
+</html>

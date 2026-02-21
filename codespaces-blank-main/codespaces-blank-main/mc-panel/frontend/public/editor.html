@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MC Panel - File Editor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            min-height: 100vh;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .top-bar {
+            background: rgba(15, 20, 40, 0.95);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 15px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .file-path {
+            font-size: 13px;
+            color: #aaa;
+            font-family: monospace;
+        }
+
+        .modified-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ffb400;
+            animation: pulse 1.5s infinite;
+            display: none;
+        }
+
+        .modified-indicator.show {
+            display: block;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .editor-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            padding: 8px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .save-btn {
+            background: linear-gradient(135deg, #00ff88, #00cc66);
+            color: #000;
+            border: none;
+            font-weight: bold;
+        }
+
+        .save-btn:hover {
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .editor-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* LINE NUMBERS */
+        .line-numbers {
+            background: rgba(0, 0, 0, 0.3);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 15px 0;
+            text-align: right;
+            font-family: 'Courier New', monospace;
+            color: #666;
+            font-size: 13px;
+            overflow: hidden;
+            user-select: none;
+            min-width: 50px;
+        }
+
+        .line-number {
+            padding: 0 15px;
+            height: 1.6em;
+            line-height: 1.6em;
+        }
+
+        /* TEXTAREA & CODE EDITOR */
+        .editor-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .editor-area {
+            flex: 1;
+            display: flex;
+            position: relative;
+            overflow: hidden;
+        }
+
+        textarea#codeEditor,
+        pre#codeHighlight {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            padding: 15px;
+            margin: 0;
+            border: none;
+            background: transparent;
+            color: #d4d4d4;
+            resize: none;
+            overflow: auto;
+            white-space: pre;
+        }
+
+        textarea#codeEditor {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1e1e1e;
+            color: transparent;
+            caret-color: #00ff88;
+            z-index: 2;
+            outline: none;
+            border: none;
+            resize: none;
+            font-size: 13px;
+            line-height: 1.6;
+            tab-size: 4;
+        }
+
+        pre#codeHighlight {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1e1e1e;
+            margin: 0;
+            pointer-events: none;
+            z-index: 1;
+            overflow: auto;
+        }
+
+        pre#codeHighlight code {
+            background: none;
+            padding: 15px;
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .hljs {
+            background: none;
+            padding: 0;
+        }
+
+        .hljs-attr { color: #9cdcfe; }
+        .hljs-string { color: #ce9178; }
+        .hljs-number { color: #b5cea8; }
+        .hljs-literal { color: #569cd6; }
+        .hljs-title { color: #dcdcaa; }
+
+        /* BOTTOM STATUS */
+        .editor-status {
+            background: rgba(0, 0, 0, 0.3);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 8px 40px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #aaa;
+        }
+
+        .status-left {
+            display: flex;
+            gap: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .top-bar {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .editor-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
+
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-backdrop.active {
+            display: flex;
+        }
+
+        .modal-box {
+            background: rgba(20, 25, 45, 0.95);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn-confirm {
+            background: linear-gradient(135deg, #00ff88, #00cc66);
+            color: #000;
+        }
+
+        .modal-btn-confirm:hover {
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .modal-btn-cancel {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-btn-cancel:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOP BAR -->
+    <div class="top-bar">
+        <div class="file-info">
+            <button class="back-btn" onclick="checkModifications()">← Back</button>
+            <div class="file-path" id="filePath">server.properties</div>
+            <div class="modified-indicator" id="modifiedIndicator"></div>
+        </div>
+        <div class="editor-actions">
+            <button class="action-btn" onclick="formatCode()">🎨 Format</button>
+            <button class="action-btn" onclick="undo()">↶ Undo</button>
+            <button class="action-btn" onclick="redo()">↷ Redo</button>
+            <button class="save-btn" onclick="saveFile()">💾 Save Changes</button>
+        </div>
+    </div>
+
+    <!-- EDITOR -->
+    <div class="editor-container">
+        <div class="line-numbers" id="lineNumbers"></div>
+        <div class="editor-wrapper">
+            <div class="editor-area">
+                <pre id="codeHighlight"><code id="highlightCode" class="language-properties"></code></pre>
+                <textarea id="codeEditor" spellcheck="false"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div class="editor-status">
+        <div class="status-left">
+            <span>Line: <span id="lineNumber">1</span></span>
+            <span>Column: <span id="columnNumber">1</span></span>
+            <span>Characters: <span id="charCount">0</span></span>
+        </div>
+        <div class="status-right">
+            <span>Language: <span id="language">Properties</span></span>
+        </div>
+    </div>
+
+    <!-- UNSAVED CHANGES MODAL -->
+    <div class="modal-backdrop" id="unsavedModal">
+        <div class="modal-box">
+            <div class="modal-title">Unsaved Changes</div>
+            <p>You have unsaved changes. Save before leaving?</p>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel" onclick="discardChanges()">Discard</button>
+                <button class="modal-btn modal-btn-confirm" onclick="saveAndGoBack()">Save & Exit</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const editor = document.getElementById('codeEditor');
+        const highlight = document.getElementById('codeHighlight');
+        const highlightCode = document.getElementById('highlightCode');
+        const lineNumbers = document.getElementById('lineNumbers');
+        const modifiedIndicator = document.getElementById('modifiedIndicator');
+        const lineNumberDisplay = document.getElementById('lineNumber');
+        const columnNumberDisplay = document.getElementById('columnNumber');
+
+        let isModified = false;
+        let originalContent = '';
+
+        // Sample content
+        const sampleContent = `# Minecraft Server Properties
+# Generated by Server
+
+#Minecraft server properties
+#Server Enginge Settings
+pvp=true
+allow-nether=true
+level-name=world
+enable-query=false
+allow-flight=false
+prevent-proxy-connections=false
+server-port=25565
+max-players=20
+level-seed=
+enable-rcon=false
+rcon.password=
+rcon.port=25575
+gamemode=survival
+enable-command-block=false
+server-ip=0.0.0.0
+network-compression-threshold=256
+difficulty=easy
+spawn-monsters=true
+op-permission-level=4
+announce-player-achievements=true
+level-type=default
+enable-status=true
+use-native-transport=true
+spawn-npcs=true
+spawn-animals=true
+texture-pack=
+spawn-protection=16
+max-world-size=29999984
+online-mode=true
+allow-cheats=false
+resource-pack=
+player-idle-timeout=0
+debug=false
+`;
+
+        // Initialize editor
+        editor.value = sampleContent;
+        originalContent = sampleContent;
+        updateHighlight();
+        updateLineNumbers();
+
+        // Event listeners
+        editor.addEventListener('input', () => {
+            updateHighlight();
+            updateLineNumbers();
+            updateCursorPosition();
+            markAsModified();
+        });
+
+        editor.addEventListener('scroll', () => {
+            highlight.scrollTop = editor.scrollTop;
+            highlight.scrollLeft = editor.scrollLeft;
+            lineNumbers.scrollTop = editor.scrollTop;
+        });
+
+        editor.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                insertTab();
+            }
+        });
+
+        editor.addEventListener('click', updateCursorPosition);
+        editor.addEventListener('keyup', updateCursorPosition);
+
+        function updateHighlight() {
+            highlightCode.textContent = editor.value;
+            highlightCode.parentElement.style.overflow = 'hidden';
+            highlightCode.parentElement.style.pointerEvents = 'none';
+            hljs.highlightElement(highlightCode);
+        }
+
+        function updateLineNumbers() {
+            const lines = editor.value.split('\n').length;
+            lineNumbers.innerHTML = '';
+            for (let i = 1; i <= lines; i++) {
+                const lineDiv = document.createElement('div');
+                lineDiv.className = 'line-number';
+                lineDiv.textContent = i;
+                lineNumbers.appendChild(lineDiv);
+            }
+        }
+
+        function updateCursorPosition() {
+            const start = editor.selectionStart;
+            const text = editor.value.substring(0, start);
+            const line = text.split('\n').length;
+            const column = text.split('\n').pop().length + 1;
+            
+            lineNumberDisplay.textContent = line;
+            columnNumberDisplay.textContent = column;
+        }
+
+        function markAsModified() {
+            if (!isModified) {
+                isModified = true;
+                modifiedIndicator.classList.add('show');
+            }
+            document.getElementById('charCount').textContent = editor.value.length;
+        }
+
+        function insertTab() {
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+            editor.value = editor.value.substring(0, start) + '\t' + editor.value.substring(end);
+            editor.selectionStart = editor.selectionEnd = start + 1;
+            updateHighlight();
+            markAsModified();
+        }
+
+        function saveFile() {
+            console.log('Saving file...');
+            isModified = false;
+            originalContent = editor.value;
+            modifiedIndicator.classList.remove('show');
+            alert('File saved successfully!');
+        }
+
+        function formatCode() {
+            // Simple formatting for properties files
+            const lines = editor.value.split('\n');
+            const formatted = lines.map(line => {
+                if (line.includes('=') && !line.startsWith('#')) {
+                    const [key, value] = line.split('=');
+                    return `${key.trim()}=${value.trim()}`;
+                }
+                return line;
+            }).join('\n');
+            editor.value = formatted;
+            updateHighlight();
+            markAsModified();
+        }
+
+        function undo() {
+            console.log('Undo');
+        }
+
+        function redo() {
+            console.log('Redo');
+        }
+
+        function checkModifications() {
+            if (isModified) {
+                document.getElementById('unsavedModal').classList.add('active');
+            } else {
+                goBack();
+            }
+        }
+
+        function saveAndGoBack() {
+            saveFile();
+            goBack();
+        }
+
+        function discardChanges() {
+            goBack();
+        }
+
+        function goBack() {
+            window.location.href = '/files.html';
+        }
+
+        // Prevent closing with unsaved changes
+        window.addEventListener('beforeunload', (e) => {
+            if (isModified) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        // Check authentication
+        if (!localStorage.getItem('isLoggedIn')) {
+            window.location.href = '/login.html';
+        }
+    </script>
+
+</body>
+</html>

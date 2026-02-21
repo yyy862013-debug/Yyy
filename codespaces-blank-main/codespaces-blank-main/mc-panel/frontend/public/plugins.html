@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MC Panel - Plugin Manager</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            min-height: 100vh;
+            color: #ffffff;
+        }
+
+        .top-bar {
+            background: rgba(15, 20, 40, 0.95);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+
+        .header {
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #aaa;
+            font-size: 13px;
+        }
+
+        /* UPLOAD ZONE */
+        .upload-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px dashed rgba(0, 255, 136, 0.3);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 40px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: rgba(0, 255, 136, 0.6);
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .upload-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .upload-subtext {
+            color: #888;
+            font-size: 13px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        /* PLUGINS LIST */
+        .plugins-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .plugins-title {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .plugins-count {
+            background: rgba(0, 255, 136, 0.1);
+            color: #00ff88;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .plugins-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .plugin-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .plugin-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(0, 255, 136, 0.5);
+        }
+
+        .plugin-info {
+            flex: 1;
+        }
+
+        .plugin-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .plugin-icon {
+            font-size: 20px;
+        }
+
+        .plugin-status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-left: 8px;
+        }
+
+        .status-enabled {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            border: 1px solid rgba(0, 255, 136, 0.4);
+        }
+
+        .status-disabled {
+            background: rgba(255, 100, 100, 0.2);
+            color: #ff6464;
+            border: 1px solid rgba(255, 100, 100, 0.4);
+        }
+
+        .plugin-details {
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 8px;
+        }
+
+        .detail-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .detail-label {
+            color: #666;
+        }
+
+        .detail-value {
+            color: #00ff88;
+            font-family: monospace;
+        }
+
+        .plugin-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        /* TOGGLE SWITCH */
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: rgba(255, 100, 100, 0.2);
+            border: 1px solid rgba(255, 100, 100, 0.4);
+            border-radius: 13px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-switch.enabled {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: rgba(0, 255, 136, 0.4);
+        }
+
+        .toggle-knob {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #fff;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-switch.enabled .toggle-knob {
+            left: 27px;
+        }
+
+        .action-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .delete-btn {
+            border-color: rgba(255, 100, 100, 0.4);
+            color: #ff6464;
+        }
+
+        .delete-btn:hover {
+            background: rgba(255, 100, 100, 0.2);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .empty-text {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .empty-subtext {
+            font-size: 13px;
+            color: #666;
+        }
+
+        /* MODAL */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: rgba(20, 25, 45, 0.95);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            backdrop-filter: blur(10px);
+            text-align: center;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 20px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn-confirm {
+            background: linear-gradient(135deg, #00ff88, #00cc66);
+            color: #000;
+        }
+
+        .modal-btn-confirm:hover {
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .modal-btn-cancel {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-btn-cancel:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        @media (max-width: 1024px) {
+            .plugin-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .plugin-controls {
+                width: 100%;
+                margin-top: 15px;
+                justify-content: flex-end;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOP BAR -->
+    <div class="top-bar">
+        <button class="back-btn" onclick="goBack()">← Back to Server</button>
+    </div>
+
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>🧩 Plugin Manager</h1>
+            <p>Manage installed plugins and mods</p>
+        </div>
+
+        <!-- UPLOAD SECTION -->
+        <div class="upload-section" onclick="document.getElementById('fileInput').click()">
+            <div class="upload-icon">📤</div>
+            <div class="upload-title">Upload New Plugin</div>
+            <div class="upload-subtext">Drag & drop .jar files or click to select</div>
+            <input type="file" id="fileInput" class="file-input" multiple accept=".jar" onchange="handleUpload(event)">
+        </div>
+
+        <!-- PLUGINS LIST -->
+        <div id="pluginsContainer">
+            <div class="plugins-header">
+                <span class="plugins-title">Installed Plugins</span>
+                <span class="plugins-count" id="pluginCount">0</span>
+            </div>
+            <div class="plugins-list" id="pluginsList">
+                <!-- Plugins will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- CONFIRM DELETE MODAL -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content">
+            <div class="modal-title">Delete Plugin?</div>
+            <p id="deleteMessage">Are you sure you want to delete this plugin?</p>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel" onclick="cancelDelete()">Cancel</button>
+                <button class="modal-btn modal-btn-confirm" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let plugins = [
+            { id: 1, name: 'CoreProtect', size: '2.3 MB', version: '21.4', enabled: true, author: 'netizen', icon: '📦' },
+            { id: 2, name: 'Essentials', size: '1.8 MB', version: '2.19.7', enabled: true, author: 'Essentials Team', icon: '⚙️' },
+            { id: 3, name: 'LiteBans', size: '890 KB', version: '2.13.0', enabled: true, author: 'MaximeGo', icon: '🔒' },
+            { id: 4, name: 'WorldEdit', size: '3.2 MB', version: '7.2.13', enabled: false, author: 'sk89q', icon: '🌍' },
+            { id: 5, name: 'ViaVersion', size: '4.1 MB', version: '4.8.1', enabled: true, author: 'Gerrygit', icon: '🔄' }
+        ];
+
+        let pluginToDelete = null;
+
+        function renderPlugins() {
+            const container = document.getElementById('pluginsList');
+            const count = document.getElementById('pluginCount');
+
+            if (!plugins.length) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📭</div>
+                        <div class="empty-text">No Plugins Installed</div>
+                        <div class="empty-subtext">Upload a plugin to get started</div>
+                    </div>
+                `;
+                count.textContent = '0';
+                return;
+            }
+
+            count.textContent = plugins.length;
+
+            container.innerHTML = plugins.map(plugin => `
+                <div class="plugin-item">
+                    <div class="plugin-info">
+                        <div class="plugin-name">
+                            ${plugin.icon} ${plugin.name}
+                            <span class="plugin-status ${plugin.enabled ? 'status-enabled' : 'status-disabled'}">
+                                ${plugin.enabled ? 'Enabled' : 'Disabled'}
+                            </span>
+                        </div>
+                        <div class="plugin-details">
+                            <div class="detail-item">
+                                <span class="detail-label">Version:</span>
+                                <span class="detail-value">${plugin.version}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Size:</span>
+                                <span class="detail-value">${plugin.size}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Author:</span>
+                                <span class="detail-value">${plugin.author}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="plugin-controls">
+                        <div class="toggle-switch ${plugin.enabled ? 'enabled' : ''}" onclick="togglePlugin(${plugin.id})">
+                            <div class="toggle-knob"></div>
+                        </div>
+                        <button class="action-btn delete-btn" onclick="openDeleteModal(${plugin.id}, '${plugin.name}')">🗑️ Remove</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function togglePlugin(id) {
+            const plugin = plugins.find(p => p.id === id);
+            if (plugin) {
+                plugin.enabled = !plugin.enabled;
+                console.log(`Plugin ${plugin.name} is now ${plugin.enabled ? 'enabled' : 'disabled'}`);
+                renderPlugins();
+            }
+        }
+
+        function openDeleteModal(id, name) {
+            pluginToDelete = id;
+            document.getElementById('deleteMessage').textContent = `Are you sure you want to delete "${name}"? This action cannot be undone.`;
+            document.getElementById('deleteModal').classList.add('active');
+        }
+
+        function cancelDelete() {
+            document.getElementById('deleteModal').classList.remove('active');
+            pluginToDelete = null;
+        }
+
+        function confirmDelete() {
+            if (pluginToDelete) {
+                plugins = plugins.filter(p => p.id !== pluginToDelete);
+                console.log(`Deleted plugin ${pluginToDelete}`);
+                cancelDelete();
+                renderPlugins();
+            }
+        }
+
+        function handleUpload(e) {
+            const files = e.target.files;
+            let newPlugins = [];
+            
+            for (let file of files) {
+                newPlugins.push({
+                    id: plugins.length + 1,
+                    name: file.name.replace('.jar', ''),
+                    size: (file.size / 1024 / 1024).toFixed(1) + ' MB',
+                    version: '1.0.0',
+                    enabled: true,
+                    author: 'Unknown',
+                    icon: '📦'
+                });
+            }
+
+            plugins = [...plugins, ...newPlugins];
+            console.log(`Uploaded ${newPlugins.length} plugin(s)`);
+            renderPlugins();
+            document.getElementById('fileInput').value = '';
+        }
+
+        function goBack() {
+            window.location.href = '/server.html';
+        }
+
+        // Initialize
+        renderPlugins();
+
+        // Check authentication
+        if (!localStorage.getItem('isLoggedIn')) {
+            window.location.href = '/login.html';
+        }
+    </script>
+
+</body>
+</html>

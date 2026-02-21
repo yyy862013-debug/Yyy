@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MC Panel - Backups</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            min-height: 100vh;
+            color: #ffffff;
+        }
+
+        .top-bar {
+            background: rgba(15, 20, 40, 0.95);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .snapshot-btn {
+            background: linear-gradient(135deg, #00ff88, #00cc66);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+        }
+
+        .snapshot-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+        }
+
+        .snapshot-btn:active {
+            transform: scale(0.98);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+
+        .header {
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #aaa;
+            font-size: 13px;
+        }
+
+        /* STATS CARDS */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .stat-subtext {
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        /* BACKUPS TABLE */
+        .table-section {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .table-header {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #aaa;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 150px;
+            gap: 20px;
+        }
+
+        .table-body {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .table-row {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 150px;
+            gap: 20px;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .table-row:last-child {
+            border-bottom: none;
+        }
+
+        .table-row:hover {
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .backup-name {
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .backup-date {
+            color: #aaa;
+            font-size: 13px;
+        }
+
+        .backup-size {
+            color: #bbb;
+            font-size: 13px;
+            font-family: monospace;
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border: 1px solid;
+            background: transparent;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+
+        .btn-restore {
+            border-color: rgba(0, 200, 255, 0.4);
+            color: #00c8ff;
+        }
+
+        .btn-restore:hover {
+            background: rgba(0, 200, 255, 0.2);
+        }
+
+        .btn-delete {
+            border-color: rgba(255, 100, 100, 0.4);
+            color: #ff6464;
+        }
+
+        .btn-delete:hover {
+            background: rgba(255, 100, 100, 0.2);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .empty-text {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .empty-subtext {
+            font-size: 13px;
+            color: #666;
+        }
+
+        /* MODAL */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: rgba(20, 25, 45, 0.95);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            backdrop-filter: blur(10px);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 20px;
+        }
+
+        .modal-description {
+            color: #aaa;
+            font-size: 13px;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .progress-bar.active {
+            display: block;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #00cc66);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 3px;
+        }
+
+        .progress-text {
+            text-align: center;
+            color: #aaa;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn-confirm {
+            background: linear-gradient(135deg, #00ff88, #00cc66);
+            color: #000;
+        }
+
+        .modal-btn-confirm:hover {
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .modal-btn-cancel {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-btn-cancel:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .modal-btn-restore {
+            background: rgba(0, 200, 255, 0.15);
+            color: #00c8ff;
+            border: 1px solid rgba(0, 200, 255, 0.3);
+        }
+
+        .modal-btn-restore:hover {
+            background: rgba(0, 200, 255, 0.25);
+        }
+
+        @media (max-width: 1024px) {
+            .table-header,
+            .table-row {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .table-header {
+                display: none;
+            }
+
+            .table-row {
+                grid-template-columns: 1fr;
+                background: rgba(255, 255, 255, 0.05);
+                padding: 15px;
+                margin-bottom: 10px;
+                border-radius: 8px;
+                border: 1px solid rgba(0, 255, 136, 0.2);
+            }
+
+            .table-actions {
+                justify-content: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOP BAR -->
+    <div class="top-bar">
+        <button class="back-btn" onclick="goBack()">← Back to Server</button>
+        <button class="snapshot-btn" onclick="createSnapshot()">💾 Create Snapshot Now</button>
+    </div>
+
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>💾 Backups & Snapshots</h1>
+            <p>Manage server backups and restore points</p>
+        </div>
+
+        <!-- STATS -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Backups</div>
+                <div class="stat-value" id="totalBackups">0</div>
+                <div class="stat-subtext">All time</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Storage Used</div>
+                <div class="stat-value" id="storageUsed">0 GB</div>
+                <div class="stat-subtext">Unlimited</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Latest Backup</div>
+                <div class="stat-value" id="latestBackup">Never</div>
+                <div class="stat-subtext">Automatic/Manual</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Days Retained</div>
+                <div class="stat-value">30</div>
+                <div class="stat-subtext">Configurable</div>
+            </div>
+        </div>
+
+        <!-- BACKUPS TABLE -->
+        <div class="table-section">
+            <div class="table-header">
+                <div>Backup Name</div>
+                <div>Date Created</div>
+                <div>Size</div>
+                <div>Actions</div>
+            </div>
+            <div class="table-body" id="backupsList">
+                <!-- Backups will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- CREATE SNAPSHOT MODAL -->
+    <div class="modal" id="snapshotModal">
+        <div class="modal-content">
+            <div class="modal-title">Creating Snapshot...</div>
+            <div class="modal-description">
+                The server is being backed up. This may take a few minutes depending on your world size.
+            </div>
+            <div class="progress-bar active">
+                <div class="progress-fill" id="snapshotProgress" style="width: 0%;"></div>
+            </div>
+            <div class="progress-text" id="progressText">Initializing...</div>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel" id="cancelBtn" onclick="cancelSnapshot()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- RESTORE CONFIRMATION MODAL -->
+    <div class="modal" id="restoreModal">
+        <div class="modal-content">
+            <div class="modal-title">⚠️ Restore Backup</div>
+            <div class="modal-description" id="restoreMessage">
+                You are about to restore from a backup. The current world will be replaced with the backup data.
+                <br><br>
+                <strong>This action cannot be undone!</strong> Make sure to create a backup first.
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel" onclick="cancelRestore()">Cancel</button>
+                <button class="modal-btn modal-btn-restore" onclick="confirmRestore()">Restore Backup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DELETE CONFIRMATION MODAL -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content">
+            <div class="modal-title">Delete Backup?</div>
+            <div class="modal-description" id="deleteMessage">
+                Are you sure you want to delete this backup? This action cannot be undone.
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel" onclick="cancelDelete()">Cancel</button>
+                <button class="modal-btn modal-btn-confirm" style="background: linear-gradient(135deg, #ff6464, #ff4444); color: #fff; box-shadow: none;" onclick="confirmDelete()">Delete Backup</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let backups = [
+            { id: 5, name: 'backup-2024-02-20', date: '2024-02-20 14:32', size: '572 MB', type: 'manual' },
+            { id: 4, name: 'backup-2024-02-19', date: '2024-02-19 02:15', size: '568 MB', type: 'auto' },
+            { id: 3, name: 'backup-2024-02-18', date: '2024-02-18 02:10', size: '565 MB', type: 'auto' },
+            { id: 2, name: 'backup-2024-02-15', date: '2024-02-15 18:45', size: '545 MB', type: 'manual' },
+            { id: 1, name: 'backup-2024-02-10', date: '2024-02-10 03:22', size: '512 MB', type: 'auto' }
+        ];
+
+        let selectedBackupId = null;
+        let restoreBackupId = null;
+
+        function renderBackups() {
+            const container = document.getElementById('backupsList');
+            const totalBackups = document.getElementById('totalBackups');
+            const storageUsed = document.getElementById('storageUsed');
+            const latestBackup = document.getElementById('latestBackup');
+
+            if (!backups.length) {
+                container.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <div class="empty-icon">📭</div>
+                        <div class="empty-text">No Backups Found</div>
+                        <div class="empty-subtext">Create your first snapshot to get started</div>
+                    </div>
+                `;
+                totalBackups.textContent = '0';
+                storageUsed.textContent = '0 MB';
+                return;
+            }
+
+            totalBackups.textContent = backups.length;
+            
+            const total = backups.reduce((sum, b) => sum + parseFloat(b.size), 0);
+            storageUsed.textContent = (total / 1024).toFixed(1) + ' GB';
+            
+            latestBackup.textContent = backups[0].date.split(' ')[0];
+
+            container.innerHTML = backups.map(backup => `
+                <div class="table-row">
+                    <div>
+                        <div class="backup-name">
+                            💾 ${backup.name}
+                            <span style="font-size: 10px; color: #888; margin-left: 8px;">[${backup.type === 'auto' ? 'AUTO' : 'MANUAL'}]</span>
+                        </div>
+                    </div>
+                    <div class="backup-date">${backup.date}</div>
+                    <div class="backup-size">${backup.size}</div>
+                    <div class="table-actions">
+                        <button class="action-btn btn-restore" onclick="openRestoreModal(${backup.id})">Restore</button>
+                        <button class="action-btn btn-delete" onclick="openDeleteModal(${backup.id})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function createSnapshot() {
+            document.getElementById('snapshotModal').classList.add('active');
+            simulateSnapshot();
+        }
+
+        function simulateSnapshot() {
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 100) progress = 100;
+                
+                document.getElementById('snapshotProgress').style.width = progress + '%';
+                
+                if (progress < 30) {
+                    document.getElementById('progressText').textContent = 'Saving world data...';
+                } else if (progress < 70) {
+                    document.getElementById('progressText').textContent = 'Compressing files...';
+                } else {
+                    document.getElementById('progressText').textContent = 'Finalizing backup...';
+                }
+
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        document.getElementById('snapshotModal').classList.remove('active');
+                        
+                        const newBackup = {
+                            id: Math.max(...backups.map(b => b.id), 0) + 1,
+                            name: `backup-${new Date().toISOString().slice(0, 10)}`,
+                            date: new Date().toLocaleString(),
+                            size: Math.round(500 + Math.random() * 100) + ' MB',
+                            type: 'manual'
+                        };
+                        
+                        backups.unshift(newBackup);
+                        renderBackups();
+                    }, 1000);
+                }
+            }, 500);
+        }
+
+        function openRestoreModal(id) {
+            restoreBackupId = id;
+            const backup = backups.find(b => b.id === id);
+            document.getElementById('restoreMessage').innerHTML = `
+                You are about to restore from <strong>${backup.name}</strong> (${backup.date}).
+                <br><br>
+                The current world will be replaced with this backup. This action cannot be undone!
+            `;
+            document.getElementById('restoreModal').classList.add('active');
+        }
+
+        function cancelRestore() {
+            document.getElementById('restoreModal').classList.remove('active');
+            restoreBackupId = null;
+        }
+
+        function confirmRestore() {
+            const backup = backups.find(b => b.id === restoreBackupId);
+            console.log(`Restoring from ${backup.name}`);
+            cancelRestore();
+            alert('Restore started! The server will stop and then restore the backup.');
+        }
+
+        function openDeleteModal(id) {
+            selectedBackupId = id;
+            const backup = backups.find(b => b.id === id);
+            document.getElementById('deleteMessage').textContent = `Are you sure you want to delete "${backup.name}"? This action cannot be undone.`;
+            document.getElementById('deleteModal').classList.add('active');
+        }
+
+        function cancelDelete() {
+            document.getElementById('deleteModal').classList.remove('active');
+            selectedBackupId = null;
+        }
+
+        function confirmDelete() {
+            backups = backups.filter(b => b.id !== selectedBackupId);
+            console.log(`Deleted backup ${selectedBackupId}`);
+            cancelDelete();
+            renderBackups();
+        }
+
+        function cancelSnapshot() {
+            document.getElementById('snapshotModal').classList.remove('active');
+        }
+
+        function goBack() {
+            window.location.href = '/server.html';
+        }
+
+        // Initialize
+        renderBackups();
+
+        // Check authentication
+        if (!localStorage.getItem('isLoggedIn')) {
+            window.location.href = '/login.html';
+        }
+    </script>
+
+</body>
+</html>
