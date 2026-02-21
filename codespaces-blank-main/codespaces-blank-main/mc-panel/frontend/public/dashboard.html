@@ -121,8 +121,8 @@
                     <aside>
                         <div class="card" style="display:flex;flex-direction:column;gap:12px">
                             <div style="font-weight:700">Quick Controls</div>
-                            <button onclick="startServer()" style="padding:10px;border-radius:8px;background:var(--accent);border:none;color:#021214;font-weight:800;cursor:pointer">Start Server</button>
-                            <button onclick="stopServer()" style="padding:10px;border-radius:8px;background:#2b3440;border:none;color:#fff;cursor:pointer">Stop Server</button>
+                            <button id="startBtn" style="padding:10px;border-radius:8px;background:var(--accent);border:none;color:#021214;font-weight:800;cursor:pointer">Start Server</button>
+                            <button id="stopBtn" style="padding:10px;border-radius:8px;background:#2b3440;border:none;color:#fff;cursor:pointer">Stop Server</button>
                             <div style="margin-top:8px;font-size:13px;color:var(--muted)">Server Actions</div>
                         </div>
                     </aside>
@@ -131,7 +131,9 @@
         </main>
     </div>
 
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script>
+        const socket = io();
         const statusEl = document.getElementById('status');
         const cpuEl = document.getElementById('cpuVal');
         const ramEl = document.getElementById('ramVal');
@@ -147,13 +149,47 @@
             term.scrollTop = term.scrollHeight;
         }
 
-        setInterval(()=>{
-            const cpu = Math.floor(Math.random()*60)+5;
-            const used = (Math.random()*3+0.2).toFixed(2);
-            cpuEl.textContent = cpu + '%';
-            ramEl.textContent = used + 'GB / 4GB';
-            playersEl.textContent = Math.floor(Math.random()*6) + ' / 20';
-        },3000);
+        // Socket.io listeners
+        socket.on('console-output', (data) => {
+            emitLog('INFO', data);
+        });
+
+        socket.on('install-progress', (progress) => {
+            progressBar.style.width = progress + '%';
+            emitLog('INSTALL', `Downloaded ${progress}%`);
+        });
+
+        socket.on('install-complete', () => {
+            progressBar.style.width = '100%';
+            emitLog('INFO', 'Install complete.');
+            statusEl.className = 'status-pill status-online';
+            statusEl.textContent = '● Online';
+        });
+
+        socket.on('server-status', (status) => {
+            if (status.cpu) cpuEl.textContent = status.cpu + '%';
+            if (status.ram) ramEl.textContent = status.ram + 'GB / 4GB';
+            if (status.players) playersEl.textContent = status.players + ' / 20';
+            if (status.running !== undefined) {
+                if (status.running) {
+                    statusEl.className = 'status-pill status-online';
+                    statusEl.textContent = '● Online';
+                } else {
+                    statusEl.className = 'status-pill status-offline';
+                    statusEl.textContent = '● Offline';
+                }
+            }
+        });
+
+        // Navigation
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const page = btn.dataset.page;
+                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                window.location.href = `/${page}.html`;
+            });
+        });
 
         async function loadVersions(){
             try{
@@ -169,16 +205,28 @@
             }
         }
 
-        document.getElementById('installBtn').addEventListener('click', async ()=>{
+        document.getElementById('installBtn').addEventListener('click', () => {
             const ver = document.getElementById('versionSelect').value;
+            if (!ver || ver === 'Loading versions...') {
+                emitLog('ERROR', 'Please select a version first');
+                return;
+            }
             emitLog('INSTALL', 'Starting install for '+ver);
-            statusEl.className = 'status-pill status-install'; statusEl.textContent = '● Installing';
+            statusEl.className = 'status-pill status-install';
+            statusEl.textContent = '● Installing';
             progressBar.style.width='10%';
-            let p=10; const t=setInterval(()=>{ p+=Math.floor(Math.random()*18); if(p>=100){ p=100; clearInterval(t); emitLog('INFO','Install complete.'); statusEl.className='status-pill status-online'; statusEl.textContent='● Online'; } progressBar.style.width=p+'%'; emitLog('INSTALL','Downloaded '+p+'%'); },600);
+            socket.emit('install-version', ver);
         });
 
-        function startServer(){ emitLog('INFO','Start requested'); statusEl.className='status-pill status-online'; statusEl.textContent='● Online'; }
-        function stopServer(){ emitLog('WARN','Stop requested'); statusEl.className='status-pill status-offline'; statusEl.textContent='● Offline'; }
+        document.getElementById('startBtn').addEventListener('click', () => {
+            emitLog('INFO','Start requested');
+            socket.emit('start-server');
+        });
+
+        document.getElementById('stopBtn').addEventListener('click', () => {
+            emitLog('WARN','Stop requested');
+            socket.emit('stop-server');
+        });
 
         loadVersions();
         document.getElementById('userDisplay').textContent = localStorage.getItem('username')||'Admin';

@@ -28,10 +28,43 @@ app.get('/', (req, res) => {
     return res.redirect('/dashboard.html');
 });
 
-// Protect dashboard.html by redirecting to login when not authenticated
-app.get('/dashboard.html', (req, res, next) => {
+// Auth middleware for all protected pages
+const authMiddleware = (req, res, next) => {
     if (!isAuthenticated(req)) return res.redirect('/login.html');
     next();
+};
+
+// Protect all page routes
+app.get('/dashboard.html', authMiddleware, (req, res, next) => next());
+app.get('/console.html', authMiddleware, (req, res, next) => next());
+app.get('/files.html', authMiddleware, (req, res, next) => next());
+app.get('/backups.html', authMiddleware, (req, res, next) => next());
+app.get('/settings.html', authMiddleware, (req, res, next) => next());
+
+// API routes for page data
+app.get('/api/backups', authMiddleware, (req, res) => {
+    // TODO: Implement actual backup file listing from backend/servers/
+    return res.json({ backups: [] });
+});
+
+app.get('/api/settings', authMiddleware, (req, res) => {
+    try {
+        const im = require('./instance-manager');
+        const settings = im.readSettings ? im.readSettings() : {};
+        return res.json(settings);
+    } catch (e) {
+        return res.json({ error: e.message });
+    }
+});
+
+app.get('/api/server-status', authMiddleware, (req, res) => {
+    // TODO: Get actual server status from instance manager
+    return res.json({ 
+        status: 'offline', 
+        players: '0/20', 
+        uptime: 0,
+        ram: '0GB / 4GB'
+    });
 });
 
 // Login endpoint - simple hardcoded credentials for private use
