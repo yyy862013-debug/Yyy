@@ -553,7 +553,7 @@
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script>
         // Get username from localStorage
-        const storedUsername = localStorage.getItem('panelUsername');
+        const storedUsername = localStorage.getItem('username') || localStorage.getItem('panelUsername');
         if (storedUsername) {
             document.getElementById('username').textContent = storedUsername;
         }
@@ -657,10 +657,10 @@
         function selectVersion(software, version) {
             selectedVersions[software] = version;
             const dropdown = document.querySelector(`[data-software="${software}"]`);
+            if (!dropdown) return;
             dropdown.querySelectorAll('.version-item').forEach(item => {
-                item.classList.remove('selected');
+                item.classList.toggle('selected', item.textContent === version);
             });
-            event.target?.classList.add('selected');
         }
 
         // Deploy version
@@ -706,17 +706,62 @@
             });
         }
 
+        // Global download progress UI
+        (function createGlobalProgress() {
+            const wrap = document.createElement('div');
+            wrap.id = 'global-install-progress';
+            wrap.style.position = 'fixed';
+            wrap.style.left = '280px';
+            wrap.style.right = '24px';
+            wrap.style.top = '20px';
+            wrap.style.height = '10px';
+            wrap.style.background = 'rgba(255,255,255,0.04)';
+            wrap.style.borderRadius = '6px';
+            wrap.style.overflow = 'hidden';
+            wrap.style.display = 'none';
+            wrap.style.zIndex = 1100;
+
+            const bar = document.createElement('div');
+            bar.id = 'global-install-bar';
+            bar.style.height = '100%';
+            bar.style.width = '0%';
+            bar.style.background = 'linear-gradient(90deg,var(--emerald),var(--emerald-dark))';
+            bar.style.transition = 'width 0.3s ease';
+            wrap.appendChild(bar);
+            document.body.appendChild(wrap);
+        })();
+
         // Listen for deployment progress
         socket.on('console-output', (msg) => {
             console.log('Server:', msg);
         });
 
+        socket.on('install-start', () => {
+            const wrap = document.getElementById('global-install-progress');
+            const bar = document.getElementById('global-install-bar');
+            if (wrap && bar) {
+                bar.style.width = '2%';
+                wrap.style.display = 'block';
+            }
+        });
+
         socket.on('install-progress', (pct) => {
-            console.log('Progress:', pct);
+            const bar = document.getElementById('global-install-bar');
+            if (bar) bar.style.width = (Math.max(2, pct)) + '%';
         });
 
         socket.on('install-complete', () => {
-            console.log('Installation complete');
+            const wrap = document.getElementById('global-install-progress');
+            const bar = document.getElementById('global-install-bar');
+            if (bar) bar.style.width = '100%';
+            setTimeout(() => { if (wrap) wrap.style.display = 'none'; if (bar) bar.style.width = '0%'; }, 1200);
+        });
+
+        socket.on('install-cancelled', () => {
+            const wrap = document.getElementById('global-install-progress');
+            const bar = document.getElementById('global-install-bar');
+            if (bar) bar.style.width = '0%';
+            if (wrap) wrap.style.display = 'none';
         });
     </script>
 </body>
