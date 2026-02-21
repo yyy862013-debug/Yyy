@@ -159,7 +159,8 @@
           successMsg.textContent = '✓ Login successful! Redirecting...';
           successMsg.style.display = 'block';
           // Store username in localStorage for dashboard
-          localStorage.setItem('panelUsername', username);
+          localStorage.setItem('username', username);
+          localStorage.setItem('isLoggedIn', 'true');
           // Redirect to dashboard
           setTimeout(() => {
             window.location.href = '/dashboard.html';
