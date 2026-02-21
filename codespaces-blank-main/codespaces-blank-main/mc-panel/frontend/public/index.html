@@ -69,6 +69,14 @@
         </select>
         <button id="installBtn" title="Download and install selected version">⬇️ Install/Update</button>
     </div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+        <div style="flex:1;background:#222;border-radius:8px;padding:6px;">
+            <div id="progressBar" style="height:14px;background:#333;border-radius:6px;overflow:hidden;">
+                <div id="progressFill" style="width:0%;height:100%;background:linear-gradient(90deg,#00e676,#00c853);"></div>
+            </div>
+        </div>
+        <div id="progressLabel" style="min-width:90px;color:#bbb;font-size:13px;">Idle</div>
+    </div>
     <h3>Live Console</h3>
     <div class="console" id="consoleBox">
         <div class="log-line">Waiting for server logs...</div>
@@ -96,6 +104,8 @@ const cmdInput = document.getElementById('cmdInput');
 const sendBtn = document.getElementById('sendBtn');
 const versionSelect = document.getElementById('versionSelect');
 const installBtn = document.getElementById('installBtn');
+const progressFill = document.getElementById('progressFill');
+const progressLabel = document.getElementById('progressLabel');
 
 // START the server
 startBtn.addEventListener('click', () => {
@@ -131,13 +141,78 @@ installBtn.addEventListener('click', () => {
     if (!v) return;
     installBtn.disabled = true;
     socket.emit('install-version', v);
+    // save selected version server-side for auto-install on Start
+    socket.emit('save-selected-version', v);
     // re-enable after a short delay if something goes wrong; actual completion is via console messages
     setTimeout(() => { installBtn.disabled = false; }, 15000);
 });
 
+// cancel button UI
+const cancelBtn = document.createElement('button');
+cancelBtn.innerText = '✖ Cancel';
+cancelBtn.style.backgroundColor = '#ff7043';
+cancelBtn.style.border = 'none';
+cancelBtn.style.padding = '8px 10px';
+cancelBtn.style.borderRadius = '6px';
+cancelBtn.style.marginLeft = '8px';
+cancelBtn.addEventListener('click', () => {
+    socket.emit('cancel-install');
+    cancelBtn.disabled = true;
+    setTimeout(() => { cancelBtn.disabled = false; }, 2000);
+});
+// insert cancel button after installBtn
+installBtn.parentNode.appendChild(cancelBtn);
+
 // If server requests install before start, notify user
 socket.on('require-install', () => {
     alert('server.jar is missing. Select a version and click Install/Update first.');
+});
+
+// Ask server for saved selected version when connected
+socket.on('connect', () => {
+    socket.emit('get-selected-version');
+});
+
+socket.on('selected-version', (v) => {
+    if (v) {
+        versionSelect.value = v;
+        localStorage.setItem('selectedVersion', v);
+    }
+});
+
+socket.on('install-cancelled', () => {
+    progressLabel.innerText = 'Cancelled';
+    installBtn.disabled = false;
+    setTimeout(() => { progressLabel.innerText = 'Idle'; }, 2000);
+});
+
+// persist selected version
+versionSelect.addEventListener('change', () => {
+    localStorage.setItem('selectedVersion', versionSelect.value);
+});
+const saved = localStorage.getItem('selectedVersion');
+if (saved) versionSelect.value = saved;
+
+// install progress UI
+socket.on('install-start', () => {
+    progressLabel.innerText = 'Downloading...';
+    progressFill.style.width = '0%';
+    installBtn.disabled = true;
+});
+socket.on('install-progress', (pct) => {
+    progressFill.style.width = pct + '%';
+    progressLabel.innerText = pct + '%';
+    if (pct >= 100) {
+        progressLabel.innerText = 'Complete';
+        installBtn.disabled = false;
+        setTimeout(() => { progressLabel.innerText = 'Idle'; }, 2000);
+    }
+});
+socket.on('install-complete', () => {
+    progressFill.style.width = '100%';
+    progressLabel.innerText = 'Installed';
+    installBtn.disabled = false;
+    setTimeout(() => { progressLabel.innerText = 'Idle'; }, 2000);
 });
 </script>
 

@@ -41,7 +41,39 @@ io.on('connection', (socket) => {
     socket.on('install-version', (versionTag) => {
         console.log(`[SOCKET] User requested install-version: ${versionTag}`);
         // Pass the io instance so installer can emit progress messages
+        // Save selected version to settings
+        try {
+            const settings = require('./instance-manager')._readSettings ? require('./instance-manager')._readSettings() : null;
+        } catch (e) { }
+        // call installer
         downloadServerJar(versionTag, io);
+    });
+
+    // Cancel ongoing install
+    socket.on('cancel-install', () => {
+        console.log('[SOCKET] User requested cancel-install');
+        try { require('./instance-manager').cancelDownload(io); } catch (e) { }
+    });
+
+    // Save selected version server-side
+    socket.on('save-selected-version', (versionTag) => {
+        try {
+            const im = require('./instance-manager');
+            const s = im.readSettings ? im.readSettings() : null;
+            const settings = s || {};
+            settings.selectedVersion = versionTag;
+            im.writeSettings ? im.writeSettings(settings) : null;
+            io.emit('console-output', `[PANEL] Selected version saved: ${versionTag}`);
+        } catch (e) { io.emit('console-output', `[PANEL] Failed to save selected version: ${e.message}`); }
+    });
+
+    // Provide selected version to client
+    socket.on('get-selected-version', () => {
+        try {
+            const im = require('./instance-manager');
+            const s = im.readSettings ? im.readSettings() : {};
+            socket.emit('selected-version', s.selectedVersion || null);
+        } catch (e) { socket.emit('selected-version', null); }
     });
 
     socket.on('disconnect', () => {
