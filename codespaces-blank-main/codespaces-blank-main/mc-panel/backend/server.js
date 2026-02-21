@@ -36,19 +36,24 @@ app.get('/', (req, res) => {
     return res.redirect('/dashboard.html');
 });
 
+// Serve login.html without auth requirement (users need to be able to see it!)
+app.get('/login.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/public/login.html'));
+});
+
 // Auth middleware for all protected pages
 const authMiddleware = (req, res, next) => {
     if (!isAuthenticated(req)) return res.redirect('/login.html');
     next();
 };
 
-// Protect all page routes
-app.get('/dashboard.html', authMiddleware, (req, res, next) => next());
-app.get('/hub.html', authMiddleware, (req, res, next) => next());
-app.get('/console.html', authMiddleware, (req, res, next) => next());
-app.get('/files.html', authMiddleware, (req, res, next) => next());
-app.get('/backups.html', authMiddleware, (req, res, next) => next());
-app.get('/settings.html', authMiddleware, (req, res, next) => next());
+// Serve protected HTML pages (dashboard, console, hub, etc.)
+const protectedPages = ['dashboard.html', 'hub.html', 'console.html', 'files.html', 'backups.html', 'settings.html'];
+protectedPages.forEach(page => {
+    app.get(`/${page}`, authMiddleware, (req, res) => {
+        res.sendFile(path.join(__dirname, '../frontend/public', page));
+    });
+});
 
 // API routes for page data
 app.get('/api/backups', authMiddleware, (req, res) => {
@@ -80,19 +85,24 @@ app.get('/api/server-status', authMiddleware, (req, res) => {
 app.post('/login', (req, res) => {
     const { username, password } = req.body || {};
     if (username === 'admin' && password === 'password') {
-        // Set a persistent cookie (7 days)
-        const cookieOptions = {
+        // Set cookies BEFORE redirect to ensure they're included
+        res.cookie('panelAuth', '1', {
             path: '/',
-            maxAge: 7 * 24 * 60 * 60 * 1000,  // 7 days in milliseconds
-            httpOnly: false,  // Allow JS access for menu display
-            sameSite: 'Lax'
-        };
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            httpOnly: false,
+            sameSite: 'Lax',
+            secure: false  // for localhost, set to true in production with HTTPS
+        });
+        res.cookie('panelUsername', username, {
+            path: '/',
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            httpOnly: false,
+            sameSite: 'Lax',
+            secure: false
+        });
         
-        // Also store username for frontend display
-        res.cookie('panelAuth', '1', cookieOptions);
-        res.cookie('panelUsername', username, cookieOptions);
-        
-        return res.redirect('/dashboard.html');
+        // Redirect after cookies are set
+        return res.status(302).redirect('/dashboard.html');
     }
     return res.status(401).send('Invalid credentials');
 });
