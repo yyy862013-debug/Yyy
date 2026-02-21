@@ -15,6 +15,7 @@ const io = new Server(server, {
 
 // Parse URL-encoded bodies (login form)
 app.use(express.urlencoded({ extended: true }));
+app.use(express.json());  // Also support JSON posts
 
 // Simple auth helper (cookie-based)
 function isAuthenticated(req){
