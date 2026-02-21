@@ -63,9 +63,7 @@
     <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;">
         <label for="versionSelect" style="min-width:120px;">Server Version:</label>
         <select id="versionSelect" style="flex:1;padding:8px;border-radius:6px;background:#1e1e1e;color:#fff;border:1px solid #333;">
-            <option value="paper-1.21">Paper 1.21 (recommended)</option>
-            <option value="paper-1.20.4">Paper 1.20.4</option>
-            <option value="vanilla-1.21">Vanilla 1.21 (not automated)</option>
+                <option value="" disabled selected>Loading versions...</option>
         </select>
         <button id="installBtn" title="Download and install selected version">⬇️ Install/Update</button>
     </div>
@@ -106,6 +104,50 @@ const versionSelect = document.getElementById('versionSelect');
 const installBtn = document.getElementById('installBtn');
 const progressFill = document.getElementById('progressFill');
 const progressLabel = document.getElementById('progressLabel');
+
+// Populate versions dropdown dynamically by calling backend proxy APIs
+async function loadVersions() {
+    try {
+        const paper = await fetch('/api/paper-versions').then(r => r.json()).catch(() => ({}));
+        const vanilla = await fetch('/api/vanilla-versions').then(r => r.json()).catch(() => ({}));
+
+        // Clear select
+        versionSelect.innerHTML = '';
+
+        // Paper group
+        const paperOptGroup = document.createElement('optgroup');
+        paperOptGroup.label = 'Paper';
+        (paper.versions || []).forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = `paper-${v}`;
+            opt.text = v;
+            paperOptGroup.appendChild(opt);
+        });
+        versionSelect.appendChild(paperOptGroup);
+
+        // Vanilla group (show only latest N releases to avoid extremely long list)
+        const vanillaOptGroup = document.createElement('optgroup');
+        vanillaOptGroup.label = 'Vanilla';
+        const vanList = (vanilla.versions || []).slice(-30).reverse();
+        vanList.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = `vanilla-${v}`;
+            opt.text = v;
+            vanillaOptGroup.appendChild(opt);
+        });
+        versionSelect.appendChild(vanillaOptGroup);
+
+        // restore saved selection from localStorage or server
+        const saved = localStorage.getItem('selectedVersion');
+        if (saved) try { versionSelect.value = saved; } catch (e) { }
+        // ask server for saved version too
+        socket.emit('get-selected-version');
+    } catch (e) {
+        versionSelect.innerHTML = '<option value="">Failed to load versions</option>';
+    }
+}
+
+loadVersions();
 
 // START the server
 startBtn.addEventListener('click', () => {

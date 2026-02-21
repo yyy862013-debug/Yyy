@@ -153,13 +153,13 @@ async function downloadServerJar(versionTag, io) {
         expectedSha1 = versionInfo.downloads.server.sha1 || null;
         io.emit('console-output', `[INSTALL] Downloading Vanilla server ${fileName} ...`);
       } else {
-        io.emit('console-output', `[INSTALL] No server download found for Vanilla ${ver}`);
-        throw new Error('No vanilla download');
+            io.emit('console-output', `[INSTALL] No server download found for Vanilla ${ver}`);
+            return false;
       }
 
     } else {
-      io.emit('console-output', `[INSTALL] Installer supports 'paper' and 'vanilla' only (received: ${versionTag}).`);
-      throw new Error('Unsupported project');
+            io.emit('console-output', `[INSTALL] Installer supports 'paper' and 'vanilla' only (received: ${versionTag}).`);
+            return false;
     }
 
     const targetPath = path.join(serverPath, 'server.jar');

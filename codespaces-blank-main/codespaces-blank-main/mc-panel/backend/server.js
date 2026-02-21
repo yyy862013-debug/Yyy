@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const axios = require('axios');
 
 // Import the engine we built earlier
 const { startServer, stopServer, sendCommand, downloadServerJar } = require('./instance-manager');
@@ -14,6 +15,37 @@ const io = new Server(server, {
 
 // Tell Express to serve our Frontend files
 app.use(express.static(path.join(__dirname, '../frontend/public')));
+
+// --- API proxy endpoints for dynamic version lists ---
+app.get('/api/paper-versions', async (req, res) => {
+    try {
+        const r = await axios.get('https://api.papermc.io/v2/projects/paper');
+        return res.json({ versions: r.data.versions || [] });
+    } catch (e) {
+        return res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/paper-builds/:version', async (req, res) => {
+    const v = req.params.version;
+    try {
+        const r = await axios.get(`https://api.papermc.io/v2/projects/paper/versions/${v}/builds`);
+        return res.json(r.data);
+    } catch (e) {
+        return res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/vanilla-versions', async (req, res) => {
+    try {
+        const r = await axios.get('https://launchermeta.mojang.com/mc/game/version_manifest.json');
+        // return only release versions (exclude snapshots) to avoid entries without server jar
+        const ids = (r.data && r.data.versions) ? r.data.versions.filter(v => v.type === 'release').map(v => v.id) : [];
+        return res.json({ versions: ids });
+    } catch (e) {
+        return res.status(500).json({ error: e.message });
+    }
+});
 
 // Listen for users connecting to the website
 io.on('connection', (socket) => {
