@@ -24,3 +24,13 @@
 [06:15:16] [Server thread/INFO]: Server permissions file permissions.yml is empty, ignoring it
 [06:15:16] [Server thread/INFO]: Preparing level "world"
 [06:15:28] [Server thread/INFO]: Preparing start region for dimension minecraft:overworld
+[06:15:35] [Server thread/INFO]: Time elapsed: 6862 ms
+[06:15:35] [Server thread/INFO]: Preparing start region for dimension minecraft:the_nether
+[06:15:37] [Server thread/INFO]: Time elapsed: 1986 ms
+[06:15:37] [Server thread/INFO]: Preparing start region for dimension minecraft:the_end
+[06:15:38] [Server thread/INFO]: Time elapsed: 716 ms
+[06:15:38] [Server thread/INFO]: [spark] Starting background profiler...
+[06:15:38] [Server thread/INFO]: Done preparing level "world" (21.552s)
+[06:15:38] [Server thread/INFO]: Running delayed init tasks
+[06:15:38] [Server thread/INFO]: Done (30.834s)! For help, type "help"
+[06:15:38] [Server thread/INFO]: Timings Reset
