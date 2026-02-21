@@ -168,13 +168,15 @@ sendBtn.addEventListener('click', () => {
     }
 });
 
-// LIVE CONSOLE
+// LIVE CONSOLE (only append if consoleBox exists on this page)
 socket.on('console-output', (text) => {
+    const consoleBoxEl = document.getElementById('consoleBox');
+    if (!consoleBoxEl) return;
     const log = document.createElement('div');
     log.className = 'log-line';
     log.innerText = text;
-    consoleBox.appendChild(log);
-    consoleBox.scrollTop = consoleBox.scrollHeight;
+    consoleBoxEl.appendChild(log);
+    consoleBoxEl.scrollTop = consoleBoxEl.scrollHeight;
 });
 
 // INSTALL / UPDATE selected version

@@ -99,7 +99,13 @@
 
     <!-- CONSOLE SECTION -->
     <div class="console-box">
-      <div class="console-title">Live Output</div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="console-title">Live Output</div>
+        <div>
+          <button class="cmd-btn" id="clearBtn" style="background:transparent;color:var(--muted);border:1px solid rgba(255,255,255,0.04);padding:8px 10px;margin-right:8px">Clear Console</button>
+          <a class="cmd-btn" href="/console.html" style="background:linear-gradient(135deg,var(--emerald),var(--emerald-dark));text-decoration:none;color:#000">Open</a>
+        </div>
+      </div>
       <div class="terminal" id="terminal">
         <div class="log-line log-info">[INFO] Console ready.</div>
       </div>
@@ -113,28 +119,53 @@
 
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
-    const socket = io();
-    const term = document.getElementById('terminal');
+    let socket = null;
     const cmdInput = document.getElementById('cmdInput');
+    const clearBtn = document.getElementById('clearBtn');
+    const MAX_LINES = 100;
 
-    function navigate(page) {
-      window.location.href = page;
+    function connectSocket() {
+      if (socket) return;
+      socket = io();
+
+      socket.on('console-output', (msg) => {
+        emitLog('INFO', msg);
+      });
+
+      socket.on('install-progress', (payload) => {
+        // payload may be number or object {pct, type, version}
+        const pct = typeof payload === 'number' ? payload : payload.pct || 0;
+        emitLog('INSTALL', `Progress: ${pct}%`);
+      });
+    }
+
+    function disconnectSocket() {
+      if (!socket) return;
+      try { socket.disconnect(); } catch (e) { }
+      socket = null;
     }
 
     function emitLog(type, text) {
+      const term = document.getElementById('terminal');
       const div = document.createElement('div');
       const logClass = type === 'INSTALL' ? 'log-install' : type === 'INFO' ? 'log-info' : type === 'WARN' ? 'log-warn' : type === 'ERROR' ? 'log-error' : 'log-meta';
       div.className = 'log-line ' + logClass;
       div.textContent = `[${type}] ${text}`;
-      term.appendChild(div);
-      term.scrollTop = term.scrollHeight;
+      if (term) {
+        term.appendChild(div);
+        // Trim old lines
+        while (term.children.length > MAX_LINES) term.removeChild(term.firstChild);
+        term.scrollTop = term.scrollHeight;
+      } else {
+        console.log(`[${type}] ${text}`);
+      }
     }
 
     function sendCommand() {
       const cmd = cmdInput.value.trim();
       if (!cmd) return;
       emitLog('META', 'Sending: ' + cmd);
-      socket.emit('send-command', cmd);
+      if (socket) socket.emit('send-command', cmd);
       cmdInput.value = '';
     }
 
@@ -142,14 +173,19 @@
       if (e.key === 'Enter') sendCommand();
     });
 
-    // Listen for console output from backend
-    socket.on('console-output', (msg) => {
-      emitLog('INFO', msg);
+    clearBtn.addEventListener('click', () => {
+      const term = document.getElementById('terminal');
+      if (term) term.innerHTML = '';
     });
 
-    socket.on('install-progress', (pct) => {
-      emitLog('INSTALL', `Progress: ${pct}%`);
+    // Connect when visible, disconnect when hidden to avoid duplicate heavy streams
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') connectSocket();
+      else disconnectSocket();
     });
+
+    // initial connect
+    if (document.visibilityState === 'visible') connectSocket();
 
     document.getElementById('userDisplay').textContent = localStorage.getItem('username') || 'Admin';
   </script>
@@ -165,28 +201,6 @@
       term.appendChild(div);
       term.scrollTop = term.scrollHeight;
     }
-
-    function sendCommand() {
-      const cmd = cmdInput.value.trim();
-      if (!cmd) return;
-      emitLog('META', 'Sending: ' + cmd);
-      socket.emit('send-command', cmd);
-      cmdInput.value = '';
-    }
-
-    cmdInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') sendCommand();
-    });
-
-    // Listen for console output from backend
-    socket.on('console-output', (msg) => {
-      emitLog('INFO', msg);
-    });
-
-    // Parse and color-code incoming logs
-    socket.on('install-progress', (pct) => {
-      emitLog('INSTALL', `Progress: ${pct}%`);
-    });
 
     document.getElementById('userDisplay').textContent = localStorage.getItem('username') || 'Admin';
   </script>

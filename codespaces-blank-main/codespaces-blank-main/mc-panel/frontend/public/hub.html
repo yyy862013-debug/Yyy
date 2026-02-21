@@ -757,10 +757,7 @@
             document.body.appendChild(wrap);
         })();
 
-        // Listen for deployment progress
-        socket.on('console-output', (msg) => {
-            console.log('Server:', msg);
-        });
+        // Console output is only shown on the Console page to avoid duplicate listeners
 
         // Helpers for per-card progress
         function showCardProgress(type) {

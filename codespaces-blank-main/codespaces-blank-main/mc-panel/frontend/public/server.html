@@ -549,10 +549,12 @@
         document.getElementById('serverName').textContent = server.name;
         document.getElementById('serverPort').textContent = server.port;
 
-        // Socket events
-        socket.on('console-output', (text) => {
-            addConsoleOutput(text, 'info');
-        });
+        // Socket events: only attach console-output handler when this page actually has a console
+        if (document.getElementById('consoleBox')) {
+            socket.on('console-output', (text) => {
+                addConsoleOutput(text, 'info');
+            });
+        }
 
         socket.on('server-status', (status) => {
             serverStatus = status;

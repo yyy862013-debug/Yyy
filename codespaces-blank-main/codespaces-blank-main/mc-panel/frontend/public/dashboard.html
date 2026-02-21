@@ -196,11 +196,12 @@
                     </div>
                 </div>
 
-                <!-- TERMINAL -->
+                <!-- TERMINAL (unified Console page link) -->
                 <div class="terminal-container">
                     <div class="terminal-title">Server Console</div>
-                    <div class="terminal" id="terminal">
-                        <div class="log-line log-info">[INFO] Console ready.</div>
+                    <div style="padding:12px;">
+                        <div style="color:var(--muted);margin-bottom:8px">Live server output is available in the unified Console.</div>
+                        <a class="btn btn-emerald" href="/console.html">Open Console →</a>
                     </div>
                 </div>
             </div>
@@ -242,7 +243,7 @@
         const cpuVal = document.getElementById('cpuVal');
         const ramVal = document.getElementById('ramVal');
         const playersVal = document.getElementById('playersVal');
-        const terminal = document.getElementById('terminal');
+        // terminal may not exist on this page (Console page is the single live log view)
         const progressBar = document.getElementById('progressBar');
         const versionSelect = document.getElementById('versionSelect');
         const installBtn = document.getElementById('installBtn');
@@ -258,14 +259,18 @@
             const logClass = type === 'INSTALL' ? 'log-install' : type === 'INFO' ? 'log-info' : type === 'WARN' ? 'log-warn' : 'log-error';
             div.className = 'log-line ' + logClass;
             div.textContent = `[${type}] ${text}`;
-            terminal.appendChild(div);
-            terminal.scrollTop = terminal.scrollHeight;
+            const termEl = document.getElementById('terminal');
+            if (termEl) {
+                termEl.appendChild(div);
+                // keep console small if present
+                while (termEl.children.length > 100) termEl.removeChild(termEl.firstChild);
+                termEl.scrollTop = termEl.scrollHeight;
+            } else {
+                console.log(`[${type}] ${text}`);
+            }
         }
 
-        // Socket.io Listeners
-        socket.on('console-output', (data) => {
-            emitLog('INFO', data);
-        });
+        // Console output is handled by the unified Console page to avoid duplicate listeners in other views
 
         socket.on('install-progress', (progress) => {
             progressBar.style.width = progress + '%';
