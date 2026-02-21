@@ -1,34 +1,61 @@
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
-// This function starts the Minecraft server
+let minecraftProcess = null;
+
 function startServer(io) {
-    // 1. Tell Node where the server.jar is located
+    // GUARD: Prevent Issue #4 (Multiple Instances)
+    if (minecraftProcess) {
+        io.emit('console-output', '[PANEL] Error: Server is already running.');
+        return;
+    }
+
     const serverPath = path.join(__dirname, 'servers', 'survival-world');
 
-    // 2. Start the Java process (The "Spawn")
-    const minecraftServer = spawn('java', [
-        '-Xmx2G', 
-        '-Xms1G', 
-        '-jar', 'server.jar', 
-        'nogui'
-    ], { cwd: serverPath });
+    // FIX: Issue #2 (Directory Verification)
+    if (!fs.existsSync(serverPath)) {
+        fs.mkdirSync(serverPath, { recursive: true });
+        io.emit('console-output', '[PANEL] Created missing server directory...');
+    }
 
-    // 3. Listen for text coming FROM the Minecraft server
-    minecraftServer.stdout.on('data', (data) => {
-        const output = data.toString();
-        console.log(`[MC]: ${output}`); // Print to your VS Code terminal
-        
-        // 4. Send that text to your Website via WebSockets
-        io.emit('console-output', output);
+    // Auto-accept EULA
+    const eulaPath = path.join(serverPath, 'eula.txt');
+    if (!fs.existsSync(eulaPath)) {
+        fs.writeFileSync(eulaPath, 'eula=true');
+    }
+
+    // Spawn the process
+    minecraftProcess = spawn('java', ['-Xmx2G', '-Xms1G', '-jar', 'server.jar', 'nogui'], { 
+        cwd: serverPath 
     });
 
-    // 5. Catch errors (like Java not being installed)
-    minecraftServer.on('error', (err) => {
-        io.emit('console-output', `Failed to start server: ${err.message}`);
+    // FIX: Issue #3 (Incomplete Stream Handling - added stderr)
+    minecraftProcess.stdout.on('data', (data) => io.emit('console-output', data.toString()));
+    minecraftProcess.stderr.on('data', (data) => io.emit('console-output', `[ERROR] ${data.toString()}`));
+
+    // FIX: Issue #1 (Zombie Processes - cleanup on exit)
+    minecraftProcess.on('close', (code) => {
+        io.emit('console-output', `[PANEL] Server exited with code ${code}`);
+        minecraftProcess = null;
     });
 
-    return minecraftServer;
+    return minecraftProcess;
 }
 
-module.exports = { startServer };
+function sendCommand(command) {
+    if (minecraftProcess) {
+        minecraftProcess.stdin.write(command + '\n');
+    } else {
+        console.log("No server running to receive command.");
+    }
+}
+
+// NEW: Proper Stop Function
+function stopServer() {
+    if (minecraftProcess) {
+        minecraftProcess.stdin.write('stop\n');
+    }
+}
+
+module.exports = { startServer, sendCommand, stopServer };

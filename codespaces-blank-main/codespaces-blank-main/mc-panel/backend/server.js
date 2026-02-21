@@ -4,12 +4,13 @@ const { Server } = require('socket.io');
 const path = require('path');
 
 // Import the engine we built earlier
-// (Make sure you have your instance-manager.js in the same folder!)
-const { startServer } = require('./instance-manager');
+const { startServer, stopServer, sendCommand } = require('./instance-manager');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    cors: { origin: '*' } // OK for private use; restrict in production
+});
 
 // Tell Express to serve our Frontend files
 app.use(express.static(path.join(__dirname, '../frontend/public')));
@@ -20,8 +21,20 @@ io.on('connection', (socket) => {
 
     // When you click the "Start" button on the website...
     socket.on('start-server', () => {
-        io.emit('console-output', '[PANEL] Starting Minecraft Server...');
+        console.log(`[SOCKET] User requested server start`);
         startServer(io); 
+    });
+
+    // Handle stop-server event
+    socket.on('stop-server', () => {
+        console.log(`[SOCKET] User requested server stop`);
+        stopServer();
+    });
+
+    // Handle send-command event
+    socket.on('send-command', (command) => {
+        console.log(`[SOCKET] User sent command: ${command}`);
+        sendCommand(command);
     });
 
     socket.on('disconnect', () => {
@@ -33,4 +46,13 @@ io.on('connection', (socket) => {
 const PORT = 3000;
 server.listen(PORT, () => {
     console.log(`🚀 Panel running! Open http://localhost:${PORT} in your browser.`);
+});
+
+// Graceful shutdown on process signals
+process.on('SIGTERM', () => {
+    console.log('[PANEL] SIGTERM received, shutting down...');
+    server.close(() => {
+        console.log('[PANEL] Server closed.');
+        process.exit(0);
+    });
 });
