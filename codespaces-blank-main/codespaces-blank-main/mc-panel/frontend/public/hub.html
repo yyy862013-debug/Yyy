@@ -227,6 +227,8 @@
         /* Per-card progress */
         .card-progress { height: 8px; width: 100%; background: rgba(255,255,255,0.03); border-radius: 6px; overflow: hidden; margin-top: 12px; display: none }
         .card-progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg,var(--emerald),var(--emerald-dark)); transition: width 0.25s ease }
+        .card-status { font-size: 12px; color: var(--muted); margin-top: 8px }
+        .software-card.disabled { opacity: 0.6; pointer-events: none }
 
         /* Loading Spinner */
         .spinner {
@@ -459,6 +461,7 @@
                 <div class="version-dropdown" data-software="paper">
                     <div class="spinner"></div> Loading versions...
                 </div>
+                <div class="card-status" data-software="paper">Ready</div>
                 <div class="card-progress" data-software="paper"><div class="card-progress-bar"></div></div>
                 <div class="deploy-section">
                     <button class="deploy-btn" onclick="deployVersion(event, 'paper')">Deploy</button>
@@ -474,6 +477,7 @@
                 <div class="version-dropdown" data-software="spigot">
                     <div class="spinner"></div> Loading versions...
                 </div>
+                <div class="card-status" data-software="spigot">Ready</div>
                 <div class="card-progress" data-software="spigot"><div class="card-progress-bar"></div></div>
                 <div class="deploy-section">
                     <button class="deploy-btn" onclick="deployVersion(event, 'spigot')">Deploy</button>
@@ -489,6 +493,7 @@
                 <div class="version-dropdown" data-software="vanilla">
                     <div class="spinner"></div> Loading versions...
                 </div>
+                <div class="card-status" data-software="vanilla">Ready</div>
                 <div class="card-progress" data-software="vanilla"><div class="card-progress-bar"></div></div>
                 <div class="deploy-section">
                     <button class="deploy-btn" onclick="deployVersion(event, 'vanilla')">Deploy</button>
@@ -504,6 +509,7 @@
                 <div class="version-dropdown" data-software="snapshot">
                     <div class="spinner"></div> Loading versions...
                 </div>
+                <div class="card-status" data-software="snapshot">Ready</div>
                 <div class="card-progress" data-software="snapshot"><div class="card-progress-bar"></div></div>
                 <div class="deploy-section">
                     <button class="deploy-btn" onclick="deployVersion(event, 'snapshot')">Deploy</button>
@@ -519,6 +525,7 @@
                 <div class="version-dropdown" data-software="forge">
                     <div class="spinner"></div> Loading versions...
                 </div>
+                <div class="card-status" data-software="forge">Ready</div>
                 <div class="card-progress" data-software="forge"><div class="card-progress-bar"></div></div>
                 <div class="deploy-section">
                     <button class="deploy-btn" onclick="deployVersion(event, 'forge')">Deploy</button>
@@ -534,6 +541,7 @@
                 <div class="version-dropdown" data-software="fabric">
                     <div class="spinner"></div> Loading versions...
                 </div>
+                <div class="card-status" data-software="fabric">Ready</div>
                 <div class="card-progress" data-software="fabric"><div class="card-progress-bar"></div></div>
                 <div class="deploy-section">
                     <button class="deploy-btn" onclick="deployVersion(event, 'fabric')">Deploy</button>
@@ -553,6 +561,7 @@
                         Find modpacks at <strong>curseforge.com</strong> and use the ID from the URL.
                     </div>
                 </div>
+                <div class="card-status" data-software="curseforge">Ready</div>
                 <div class="card-progress" data-software="curseforge"><div class="card-progress-bar"></div></div>
                 <div class="deploy-section">
                     <button class="deploy-btn" onclick="deployVersion(event, 'curseforge')">Deploy</button>
@@ -699,6 +708,9 @@
             btn.disabled = true;
             btn.classList.add('loading');
             btn.innerHTML = '<span class="spinner"></span> Deploying...';
+            // disable card and set status immediately
+            setCardDisabled(software, true);
+            setCardStatus(software, 'Deploying...');
 
             // Emit deploy event to backend
             socket.emit('deploy-server', { type: software, version: version }, (response) => {
@@ -713,6 +725,9 @@
                     }, 500);
                 } else {
                     alert(`Deployment failed: ${response?.message || 'Unknown error'}`);
+                    // re-enable card on failure
+                    setCardDisabled(software, false);
+                    setCardStatus(software, 'Failed');
                 }
             });
         }
@@ -755,6 +770,8 @@
                 wrap.style.display = 'block';
                 bar.style.width = '2%';
             }
+            setCardDisabled(type, true);
+            setCardStatus(type, 'Downloading...');
         }
 
         function updateCardProgress(type, pct) {
@@ -770,6 +787,8 @@
             const bar = wrap?.querySelector('.card-progress-bar');
             if (bar) bar.style.width = '100%';
             setTimeout(() => { if (wrap) { wrap.style.display = 'none'; bar.style.width = '0%'; } }, 1200);
+            setCardStatus(type, 'Installed');
+            setCardDisabled(type, false);
         }
 
         function cancelCardProgress(type) {
@@ -777,11 +796,31 @@
             const bar = wrap?.querySelector('.card-progress-bar');
             if (bar) bar.style.width = '0%';
             if (wrap) wrap.style.display = 'none';
+            setCardStatus(type, 'Cancelled');
+            setCardDisabled(type, false);
+        }
+
+        function setCardStatus(type, text) {
+            const el = document.querySelector(`.card-status[data-software="${type}"]`);
+            if (el) el.textContent = text;
+        }
+
+        function setCardDisabled(type, disabled) {
+            let card = document.querySelector(`.software-card[onclick*="${type}"]`) || document.querySelector(`.software-card`);
+            // fallback: match by data-software on inner elements
+            if (!card) {
+                const progress = document.querySelector(`.card-progress[data-software="${type}"]`);
+                card = progress ? progress.closest('.software-card') : null;
+            }
+            if (!card) return;
+            if (disabled) card.classList.add('disabled'); else card.classList.remove('disabled');
+            const btn = card.querySelector('.deploy-btn');
+            if (btn) btn.disabled = !!disabled;
         }
 
         // install events: payload may be object {type, version, pct} or simple number
         socket.on('install-start', (meta) => {
-            if (meta && meta.type) { showCardProgress(meta.type); } else {
+            if (meta && meta.type) { showCardProgress(meta.type); setCardStatus(meta.type, 'Starting...'); } else {
                 const wrap = document.getElementById('global-install-progress');
                 const bar = document.getElementById('global-install-bar');
                 if (wrap && bar) { bar.style.width = '2%'; wrap.style.display = 'block'; }
@@ -798,6 +837,8 @@
             const pct = data.pct || 0;
             if (data.type) {
                 updateCardProgress(data.type, pct);
+                setCardStatus(data.type, `Downloading ${pct}%`);
+                if (pct >= 100) setCardStatus(data.type, 'Finishing...');
             } else {
                 const bar = document.getElementById('global-install-bar');
                 if (bar) bar.style.width = (Math.max(2, pct)) + '%';
@@ -805,7 +846,7 @@
         });
 
         socket.on('install-complete', (meta) => {
-            if (meta && meta.type) { completeCardProgress(meta.type); } else {
+            if (meta && meta.type) { completeCardProgress(meta.type); setCardStatus(meta.type, `Installed ${meta.version || ''}`); } else {
                 const wrap = document.getElementById('global-install-progress');
                 const bar = document.getElementById('global-install-bar');
                 if (bar) bar.style.width = '100%';
@@ -814,7 +855,7 @@
         });
 
         socket.on('install-cancelled', (meta) => {
-            if (meta && meta.type) { cancelCardProgress(meta.type); } else {
+            if (meta && meta.type) { cancelCardProgress(meta.type); setCardStatus(meta.type, 'Cancelled'); } else {
                 const wrap = document.getElementById('global-install-progress');
                 const bar = document.getElementById('global-install-bar');
                 if (bar) bar.style.width = '0%';
